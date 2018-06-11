@@ -17,7 +17,12 @@ A simple project that retrieves weather data from [Open Weather Map](https://ope
   in Monmouthshire, Wales, rather than for Newcastle upon Tyne or Newcastle-under-Lyme.
 
 ## Responses
-Weather data are returned in a specific format:
+Weather data are returned in a specific format, as exemplified below.
+Units are metric, i.e. temperature in degrees celsius, wind speed in m/s, visibility in metres,
+precipitation in millimetres. Note that for _current_ weather data, minimum and maximum temperatures
+are for the entire region at the time of measurement; these are likely to be the same for smaller
+locations, but could be different for larger cities and metropolitan areas. For daily forecasted
+weather,
 
 ```json
 {
@@ -28,8 +33,8 @@ Weather data are returned in a specific format:
   },
   "temperature": {
     "current": "12.4",
-    "minimum": "3.7",
-    "maximum": "12.6"
+    "minimum": "10.9",
+    "maximum": "12.9"
   },
   "wind": {
     "speed": "32.0",
@@ -40,6 +45,8 @@ Weather data are returned in a specific format:
 
 ## Future Work
 - Streaming weather data for an editable selection of cities.
-- Ability to provide a numeric identifier for a location, as defined by OpenWeatherMap.
-- A simple front-end project for displaying streaming weather data.
+- 5-day weather forecast
+- Ability to provide a numeric identifier for a location, as defined by OpenWeatherMap, for
+  unambiguous identification.
+- A simple front-end app for displaying streaming weather data.
 
