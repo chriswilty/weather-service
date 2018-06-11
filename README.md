@@ -17,12 +17,12 @@ A simple project that retrieves weather data from [Open Weather Map](https://ope
   in Monmouthshire, Wales, rather than for Newcastle upon Tyne or Newcastle-under-Lyme.
 
 ## Responses
-Weather data are returned in a specific format, as exemplified below.
+Weather data are returned in a specific format; see example below.
 Units are metric, i.e. temperature in degrees celsius, wind speed in m/s, visibility in metres,
 precipitation in millimetres. Note that for _current_ weather data, minimum and maximum temperatures
 are for the entire region at the time of measurement; these are likely to be the same for smaller
-locations, but could be different for larger cities and metropolitan areas. For daily forecasted
-weather,
+locations, but could be different for larger cities and metropolitan areas. For forecasts, minimum
+and maximum temperatures will represent the forecasted variation throughout the day.
 
 ```json
 {

@@ -1,4 +1,4 @@
-package com.scottlogic.weather.api.message;
+package com.scottlogic.weather.owmadapter.api.message;
 
 import lombok.Builder;
 import lombok.Value;
@@ -6,6 +6,6 @@ import lombok.Value;
 @Value
 @Builder
 public class Weather {
-	private final short id;
+	private final int id;
 	private final String description;
 }
