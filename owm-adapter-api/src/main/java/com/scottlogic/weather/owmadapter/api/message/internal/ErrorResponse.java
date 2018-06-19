@@ -1,0 +1,11 @@
+package com.scottlogic.weather.owmadapter.api.message.internal;
+
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import lombok.Value;
+
+@Value
+@JsonDeserialize
+public class ErrorResponse {
+	private final int cod;
+	private final String message;
+}

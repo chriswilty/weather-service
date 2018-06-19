@@ -6,6 +6,7 @@ import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.scottlogic.weather.owmadapter.api.OwmAdapter;
 import com.scottlogic.weather.owmadapter.api.message.WeatherData;
 import com.scottlogic.weather.weatherservice.api.WeatherService;
+import com.scottlogic.weather.weatherservice.api.message.Sun;
 import com.scottlogic.weather.weatherservice.api.message.Temperature;
 import com.scottlogic.weather.weatherservice.api.message.Weather;
 import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
@@ -32,13 +33,15 @@ public class WeatherServiceImpl implements WeatherService {
 			log.info("Received request for current weather in [{}]", location);
 
 			return owmAdapterService.getCurrentWeather(location).invoke()
-					.thenApply(this::transformWeatherData);
+					.thenApply(this::transformWeatherData)
+					.thenApply(this::logResponse);
 		};
 	}
 
 	private WeatherDataResponse transformWeatherData(final WeatherData weatherData) {
 		return WeatherDataResponse.builder()
 				.location(weatherData.getName())
+				.measured(weatherData.getMeasured())
 				.weather(Weather.builder()
 						.id(weatherData.getWeather().getId())
 						.description(weatherData.getWeather().getDescription())
@@ -55,6 +58,16 @@ public class WeatherServiceImpl implements WeatherService {
 						.speed(weatherData.getWind().getSpeed())
 						.build()
 				)
+				.sun(Sun.builder()
+						.sunrise(weatherData.getSun().getSunrise())
+						.sunset(weatherData.getSun().getSunset())
+						.build()
+				)
 				.build();
+	}
+
+	private WeatherDataResponse logResponse(final WeatherDataResponse response) {
+		log.info("Sending current weather data response for [{}]", response.getLocation());
+		return response;
 	}
 }

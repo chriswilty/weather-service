@@ -27,6 +27,7 @@ and maximum temperatures will represent the forecasted variation throughout the 
 ```json
 {
   "location": "Anywhere, UK",
+  "measured": "2018-06-19T14:00:00",
   "weather": {
     "id": 522,
     "description": "crappy weather"
@@ -39,6 +40,10 @@ and maximum temperatures will represent the forecasted variation throughout the 
   "wind": {
     "speed": "32.0",
     "fromDegrees": 30
+  },
+  "sun": {
+    "sunrise": "2018-06-19T04:26:06",
+    "sunset": "2018-06-19T22:02:31"
   }
 }
 ```
