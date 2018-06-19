@@ -6,6 +6,7 @@ import com.lightbend.lagom.javadsl.api.transport.TransportException;
 import com.scottlogic.weather.owmadapter.api.OwmAdapter;
 import com.scottlogic.weather.owmadapter.api.message.Sun;
 import com.scottlogic.weather.owmadapter.api.message.WeatherData;
+import com.scottlogic.weather.owmadapter.api.message.internal.Coordinates;
 import com.scottlogic.weather.owmadapter.api.message.internal.Locale;
 import com.scottlogic.weather.owmadapter.api.message.internal.OwmWeatherResponse;
 import com.scottlogic.weather.owmadapter.api.message.internal.Temperature;
@@ -18,7 +19,10 @@ import org.mockito.Mock;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
+import static java.time.temporal.ChronoUnit.HOURS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -64,10 +68,14 @@ class OwmAdapterTest {
 	}
 
 	private WeatherData generateWeatherDataFrom(final OwmWeatherResponse owmResponse) {
+		final double latitude = owmResponse.getCoordinates().getLatitude();
+		final double longitude = owmResponse.getCoordinates().getLongitude();
+		final String zoneId = TimezoneMapper.latLngToTimezoneString(latitude, longitude);
+
 		return WeatherData.builder()
 				.id(owmResponse.getId())
 				.name(owmResponse.getName() + ", " + owmResponse.getLocaleData().getCountryCode())
-				.measured(owmResponse.getMeasuredAt())
+				.measured(OffsetDateTime.ofInstant(owmResponse.getMeasuredAt(), ZoneId.of(zoneId)))
 				.weather(com.scottlogic.weather.owmadapter.api.message.Weather.builder()
 						.id(owmResponse.getWeather().get(0).getId())
 						.description(owmResponse.getWeather().get(0).getDescription())
@@ -85,23 +93,32 @@ class OwmAdapterTest {
 						.build()
 				)
 				.sun(Sun.builder()
-						.sunrise(owmResponse.getLocaleData().getSunrise())
-						.sunset(owmResponse.getLocaleData().getSunset())
+						.sunrise(OffsetDateTime.ofInstant(owmResponse.getLocaleData().getSunrise(), ZoneId.of(zoneId)))
+						.sunset(OffsetDateTime.ofInstant(owmResponse.getLocaleData().getSunset(), ZoneId.of(zoneId)))
 						.build()
 				)
 				.build();
 	}
 
 	private OwmWeatherResponse generateOwmWeatherResponse() {
-		final Instant now = Instant.now();
+		final Instant timeNow = Instant.parse("2018-06-21T13:00:00Z")
+				.minus(3, HOURS); // Helsinki is 3 hours ahead of UTC at the above time.
+		final Instant sunrise = timeNow.minus(10, HOURS);
+		final Instant sunset = timeNow.plus(10, HOURS);
+
 		return OwmWeatherResponse.builder()
 				.id(12345)
-				.name("anywhere")
-				.measuredAt(now)
+				.name("Helsinki")
+				.coordinates(Coordinates.builder()
+						.longitude(24.94)
+						.latitude(60.17)
+						.build()
+				)
+				.measuredAt(timeNow)
 				.localeData(Locale.builder()
-						.sunrise(now)
-						.sunset(now)
-						.countryCode("AA")
+						.sunrise(sunrise)
+						.sunset(sunset)
+						.countryCode("FI")
 						.build()
 				)
 				.weather(ImmutableList.of(Weather.builder()

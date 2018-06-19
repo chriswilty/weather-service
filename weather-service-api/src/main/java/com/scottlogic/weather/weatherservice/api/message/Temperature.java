@@ -1,7 +1,7 @@
 package com.scottlogic.weather.weatherservice.api.message;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.scottlogic.weather.common.serializer.BigDecimalSerializer;
+import com.scottlogic.weather.weatherservice.api.serialization.BigDecimalToStringSerializer;
 import lombok.Builder;
 import lombok.Value;
 
@@ -11,12 +11,13 @@ import java.math.BigDecimal;
 @Builder
 public class Temperature {
 
-	@JsonSerialize(using = BigDecimalSerializer.class)
+	@JsonSerialize(using = BigDecimalToStringSerializer.class)
 	private final BigDecimal current;
 
-	@JsonSerialize(using = BigDecimalSerializer.class)
+	@JsonSerialize(using = BigDecimalToStringSerializer.class)
 	private final BigDecimal minimum;
 
-	@JsonSerialize(using = BigDecimalSerializer.class)
+	@JsonSerialize(using = BigDecimalToStringSerializer.class)
 	private final BigDecimal maximum;
+	
 }

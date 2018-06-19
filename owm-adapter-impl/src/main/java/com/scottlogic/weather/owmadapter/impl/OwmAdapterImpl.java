@@ -13,6 +13,10 @@ import com.scottlogic.weather.owmadapter.api.message.internal.OwmWeatherResponse
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.concurrent.CompletableFuture;
 
 public class OwmAdapterImpl implements OwmAdapter {
@@ -40,10 +44,15 @@ public class OwmAdapterImpl implements OwmAdapter {
 	}
 
 	private WeatherData transformOwmWeatherData(final OwmWeatherResponse owmResponse) {
+		final double latitude = owmResponse.getCoordinates().getLatitude();
+		final double longitude = owmResponse.getCoordinates().getLongitude();
+		final String zoneId = TimezoneMapper.latLngToTimezoneString(latitude, longitude);
+		log.info("TimeZone is " + zoneId);
+
 		return WeatherData.builder()
 				.id(owmResponse.getId())
 				.name(owmResponse.getName() + ", " + owmResponse.getLocaleData().getCountryCode())
-				.measured(owmResponse.getMeasuredAt())
+				.measured(instantToOffsetDateTime(owmResponse.getMeasuredAt(), zoneId))
 				.weather(
 						transformWeather(owmResponse.getWeather().get(0))
 				)
@@ -59,8 +68,8 @@ public class OwmAdapterImpl implements OwmAdapter {
 						.build()
 				)
 				.sun(Sun.builder()
-						.sunrise(owmResponse.getLocaleData().getSunrise())
-						.sunset(owmResponse.getLocaleData().getSunset())
+						.sunrise(instantToOffsetDateTime(owmResponse.getLocaleData().getSunrise(), zoneId))
+						.sunset(instantToOffsetDateTime(owmResponse.getLocaleData().getSunset(), zoneId))
 						.build()
 				)
 				.build();
@@ -71,5 +80,9 @@ public class OwmAdapterImpl implements OwmAdapter {
 				.id(owmWeather.getId())
 				.description(owmWeather.getDescription())
 				.build();
+	}
+
+	private OffsetDateTime instantToOffsetDateTime(final Instant instant, final String zoneId) {
+		return ZonedDateTime.ofInstant(instant, ZoneId.of(zoneId)).toOffsetDateTime();
 	}
 }

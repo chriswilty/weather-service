@@ -12,6 +12,7 @@ lazy val `common-lib` = (project in file("common-lib"))
   .settings(
     common,
     libraryDependencies ++= Seq(
+      lagomJavadslApi,
       lagomJavadslJackson
     )
   )

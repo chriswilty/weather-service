@@ -1,7 +1,7 @@
 package com.scottlogic.weather.weatherservice.api.message;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.scottlogic.weather.common.serializer.BigDecimalSerializer;
+import com.scottlogic.weather.weatherservice.api.serialization.BigDecimalToStringSerializer;
 import lombok.Builder;
 import lombok.Value;
 
@@ -13,7 +13,7 @@ import static com.google.common.base.Preconditions.checkState;
 @Builder
 public class Wind {
 
-	@JsonSerialize(using = BigDecimalSerializer.class)
+	@JsonSerialize(using = BigDecimalToStringSerializer.class)
 	private final BigDecimal speed;
 
 	private final short fromDegrees;

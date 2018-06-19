@@ -16,7 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.concurrent.CompletableFuture;
 
 import static java.time.temporal.ChronoUnit.HOURS;
@@ -78,7 +78,7 @@ class WeatherServiceTest {
 		}
 
 		private WeatherData generateWeatherData(final String location) {
-			final LocalDateTime now = LocalDateTime.now();
+			final OffsetDateTime now = OffsetDateTime.now();
 			return WeatherData.builder()
 					.id(1234567)
 					.name(location)

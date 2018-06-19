@@ -6,8 +6,6 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 @Value
 @Builder
@@ -21,12 +19,4 @@ public class Locale {
 
 	@JsonFormat(shape=JsonFormat.Shape.NUMBER, pattern="s")
 	private final Instant sunset;
-
-	public LocalDateTime getSunrise() {
-		return LocalDateTime.ofInstant(sunrise, ZoneId.systemDefault());
-	}
-
-	public LocalDateTime getSunset() {
-		return LocalDateTime.ofInstant(sunset, ZoneId.systemDefault());
-	}
 }

@@ -9,6 +9,7 @@ import akka.testkit.javadsl.TestKit;
 import com.google.common.collect.ImmutableList;
 import com.lightbend.lagom.javadsl.api.transport.NotFound;
 import com.scottlogic.weather.owmadapter.api.message.Unauthorized;
+import com.scottlogic.weather.owmadapter.api.message.internal.Coordinates;
 import com.scottlogic.weather.owmadapter.api.message.internal.Locale;
 import com.scottlogic.weather.owmadapter.api.message.internal.OwmWeatherResponse;
 import com.scottlogic.weather.owmadapter.api.message.internal.Temperature;
@@ -26,8 +27,6 @@ import org.mockito.Mock;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -132,6 +131,11 @@ class OwmClientTest {
 		return OwmWeatherResponse.builder()
 				.id(12345)
 				.name("anywhere")
+				.coordinates(Coordinates.builder()
+						.longitude(2.0)
+						.latitude(60.0)
+						.build()
+				)
 				.measuredAt(now)
 				.localeData(Locale.builder()
 						.sunrise(now.minus(90, ChronoUnit.MINUTES))
@@ -169,12 +173,11 @@ class OwmClientTest {
 	}
 
 	private String owmWeatherResponseToEntityString(final OwmWeatherResponse weather) {
-		final LocalDateTime sunrise = weather.getLocaleData().getSunrise();
-		final LocalDateTime sunset = weather.getLocaleData().getSunset();
-		final LocalDateTime measuredAt = weather.getMeasuredAt();
-
 		return "{" +
-				"\"coord\":{\"lon\":-3.2,\"lat\":55.95}," +
+				"\"coord\":{" +
+					"\"lon\":" + weather.getCoordinates().getLongitude() +
+					",\"lat\":" + weather.getCoordinates().getLatitude() +
+				"}," +
 				"\"weather\":[{" +
 					"\"id\":" + weather.getWeather().get(0).getId() +
 					",\"description\":\"" + weather.getWeather().get(0).getDescription() + "\",\"icon\":\"03d\"" +
@@ -193,12 +196,12 @@ class OwmClientTest {
 					",\"deg\":" + weather.getWind().getFromDegrees() +
 				"}," +
 				"\"clouds\":{\"all\":40}," +
-				"\"dt\":" + measuredAt.toInstant(ZoneId.systemDefault().getRules().getOffset(measuredAt)).getEpochSecond() +
+				"\"dt\":" + weather.getMeasuredAt().getEpochSecond() +
 				",\"sys\":{" +
 					"\"type\":1,\"id\":5122,\"message\":0.0032" +
 					",\"country\":\"" + weather.getLocaleData().getCountryCode() + "\"" +
-					",\"sunrise\":" + sunrise.toInstant(ZoneId.systemDefault().getRules().getOffset(sunrise)).getEpochSecond() +
-					",\"sunset\":" + sunset.toInstant(ZoneId.systemDefault().getRules().getOffset(sunset)).getEpochSecond() +
+					",\"sunrise\":" + weather.getLocaleData().getSunrise().getEpochSecond() +
+					",\"sunset\":" + weather.getLocaleData().getSunset().getEpochSecond() +
 				"}," +
 				"\"id\":" + weather.getId() +
 				",\"name\":\"" + weather.getName() + "\"," +

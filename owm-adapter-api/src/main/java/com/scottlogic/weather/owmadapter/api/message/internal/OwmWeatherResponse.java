@@ -7,8 +7,6 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 
 @Value
@@ -26,14 +24,13 @@ public class OwmWeatherResponse {
 	@JsonProperty("sys")
 	private final Locale localeData;
 
+	@JsonProperty("coord")
+	private final Coordinates coordinates;
+
 	private final List<Weather> weather;
 
 	@JsonProperty("main")
 	private final Temperature temperature;
 
 	private final Wind wind;
-
-	public LocalDateTime getMeasuredAt() {
-		return LocalDateTime.ofInstant(measuredAt, ZoneId.systemDefault());
-	}
 }

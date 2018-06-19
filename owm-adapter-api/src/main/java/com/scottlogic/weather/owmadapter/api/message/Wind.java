@@ -1,7 +1,5 @@
 package com.scottlogic.weather.owmadapter.api.message;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.scottlogic.weather.common.serializer.BigDecimalSerializer;
 import lombok.Builder;
 import lombok.Value;
 
@@ -13,9 +11,7 @@ import static com.google.common.base.Preconditions.checkState;
 @Builder
 public class Wind {
 
-	@JsonSerialize(using = BigDecimalSerializer.class)
 	private final BigDecimal speed;
-
 	private final short fromDegrees;
 
 	public Wind(final BigDecimal speed, final short fromDegrees) {
