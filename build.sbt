@@ -3,7 +3,6 @@ version in ThisBuild := "1.0.0-SNAPSHOT"
 scalaVersion in ThisBuild := "2.12.6"
 
 lagomKafkaEnabled in ThisBuild := false
-lagomCassandraEnabled in ThisBuild := false
 
 lazy val `weather-service` = (project in file("."))
   .aggregate(`weather-service-api`, `weather-service-impl`, `owm-adapter-api`, `owm-adapter-impl`)

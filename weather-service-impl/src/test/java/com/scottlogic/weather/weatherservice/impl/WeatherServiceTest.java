@@ -1,43 +1,47 @@
 package com.scottlogic.weather.weatherservice.impl;
 
-import akka.NotUsed;
-import com.lightbend.lagom.javadsl.api.ServiceCall;
+import akka.stream.javadsl.Source;
 import com.lightbend.lagom.javadsl.api.transport.NotFound;
-import com.scottlogic.weather.owmadapter.api.OwmAdapter;
-import com.scottlogic.weather.owmadapter.api.message.Sun;
-import com.scottlogic.weather.owmadapter.api.message.Temperature;
 import com.scottlogic.weather.owmadapter.api.message.Unauthorized;
-import com.scottlogic.weather.owmadapter.api.message.Weather;
-import com.scottlogic.weather.owmadapter.api.message.WeatherData;
-import com.scottlogic.weather.owmadapter.api.message.Wind;
 import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.GetCurrentWeatherStream;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherEntity;
+import com.scottlogic.weather.weatherservice.impl.stub.OwmAdapterStub;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 import java.util.concurrent.CompletableFuture;
 
-import static java.time.temporal.ChronoUnit.HOURS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+import static org.mockito.MockitoAnnotations.initMocks;
 
 @DisplayName("Tests for the WeatherService implementation")
 class WeatherServiceTest {
+
+	private final String entityId = "default";
+
+	@Mock private PersistentEntityRegistryFacade registryFacade;
+
 	private WeatherServiceImpl sut;
 
 	@BeforeEach
 	void beforeEach() {
-		sut = new WeatherServiceImpl(new OwmAdapterStub());
+		initMocks(this);
+		sut = new WeatherServiceImpl(new OwmAdapterStub(), registryFacade);
 	}
 
 	@Test
 	void getCurrentWeather_LocationFound_RespondsWithWeatherData() throws Exception {
 		final String location = "Edinburgh,UK";
-		final WeatherDataResponse result = sut.getCurrentWeather(location).invoke().toCompletableFuture().get(5, SECONDS);
+		final WeatherDataResponse result = sut.currentWeather(location).invoke().toCompletableFuture().get(5, SECONDS);
 
 		assertThat(result.getLocation(), is(location));
 	}
@@ -45,66 +49,30 @@ class WeatherServiceTest {
 	@Test
 	void getCurrentWeather_AdapterThrowsUnauthorized() {
 		assertThrows(Unauthorized.class, () ->
-				sut.getCurrentWeather(OwmAdapterStub.LOCATION_401).invoke().toCompletableFuture().get(5, SECONDS)
+				sut.currentWeather(OwmAdapterStub.LOCATION_401).invoke().toCompletableFuture().get(5, SECONDS)
 		);
 	}
 
 	@Test
 	void getCurrentWeather_AdapterThrowsNotFound() {
 		assertThrows(NotFound.class, () ->
-				sut.getCurrentWeather(OwmAdapterStub.LOCATION_404).invoke().toCompletableFuture().get(5, SECONDS)
+				sut.currentWeather(OwmAdapterStub.LOCATION_404).invoke().toCompletableFuture().get(5, SECONDS)
 		);
 	}
 
-	/**
-	 * Stub implementation of OWM Adapter service, returning faked data.
-	 */
-	class OwmAdapterStub implements OwmAdapter {
-		static final String LOCATION_401 = "Anywhere,KP";
-		static final String LOCATION_404 = "Trumpsbrain,US";
+	@Test
+	void getWeatherDataStream_SendsCommandToWeatherEntityAndGetsBackASource() throws Exception {
+		final Source<WeatherDataResponse, ?> expectedSource = Source.empty();
 
-		@Override
-		public ServiceCall<NotUsed, WeatherData> getCurrentWeather(final String location) {
-			return request -> {
-				switch (location) {
-					case LOCATION_401:
-						throw new Unauthorized("denied");
-					case LOCATION_404:
-						throw new NotFound("no sir");
-					default:
-						return CompletableFuture.completedFuture(generateWeatherData(location));
-				}
-			};
-		}
+		when(registryFacade.sendCommandToPersistentEntity(
+				eq(WeatherEntity.class),
+				eq(entityId),
+				any(GetCurrentWeatherStream.class))
+		).thenReturn(
+				CompletableFuture.completedFuture(expectedSource)
+		);
 
-		private WeatherData generateWeatherData(final String location) {
-			final OffsetDateTime now = OffsetDateTime.now();
-			return WeatherData.builder()
-					.id(1234567)
-					.name(location)
-					.measured(now)
-					.weather(Weather.builder()
-							.id(101)
-							.description("crappy pissy rain")
-							.build()
-					)
-					.temperature(Temperature.builder()
-							.current(new BigDecimal("10.0"))
-							.minimum(new BigDecimal("9.5"))
-							.maximum(new BigDecimal("10.5"))
-							.build()
-					)
-					.wind(Wind.builder()
-							.fromDegrees((short) 0)
-							.speed(new BigDecimal("34.5"))
-							.build()
-					)
-					.sun(Sun.builder()
-							.sunrise(now.withHour(6).truncatedTo(HOURS))
-							.sunset(now.withHour(18).truncatedTo(HOURS))
-							.build()
-					)
-					.build();
-		}
+		final Source<WeatherDataResponse, ?> result = sut.currentWeatherStream().invoke().toCompletableFuture().get(5, SECONDS);
+		assertThat(result, is(expectedSource));
 	}
 }
