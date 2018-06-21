@@ -7,8 +7,6 @@ import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.scottlogic.weather.owmadapter.api.OwmAdapter;
 import com.scottlogic.weather.weatherservice.api.WeatherService;
 import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
-import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand;
-import com.scottlogic.weather.weatherservice.impl.entity.WeatherEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,20 +21,18 @@ public class WeatherServiceImpl implements WeatherService {
 	private final String entityId = "default";
 
 	private final OwmAdapter owmAdapterService;
-	private final PersistentEntityRegistryFacade persistentEntityRegistryFacade;
+	private final SourceGenerator sourceGenerator;
 
 	@Inject
-	public WeatherServiceImpl(final OwmAdapter owmAdapter, final PersistentEntityRegistryFacade persistentEntityRegistryFacade) {
+	public WeatherServiceImpl(final OwmAdapter owmAdapter, final SourceGenerator sourceGenerator) {
 		this.owmAdapterService = owmAdapter;
-		this.persistentEntityRegistryFacade = persistentEntityRegistryFacade;
-		persistentEntityRegistryFacade.register(WeatherEntity.class);
+		this.sourceGenerator = sourceGenerator;
 	}
 
 	@Override
 	public ServiceCall<NotUsed, WeatherDataResponse> currentWeather(final String location) {
 		return request -> {
 			log.info("Received request for current weather in [{}]", location);
-
 			return this.owmAdapterService.getCurrentWeather(location).invoke()
 					.thenApply(MessageUtils::transformWeatherData)
 					.thenApply(this::logResponse);
@@ -47,12 +43,7 @@ public class WeatherServiceImpl implements WeatherService {
 	public ServiceCall<NotUsed, Source<WeatherDataResponse, ?>> currentWeatherStream() {
 		return request -> {
 			log.info("Received request for stream of current weather");
-
-			return this.persistentEntityRegistryFacade.sendCommandToPersistentEntity(
-					WeatherEntity.class,
-					entityId,
-					new WeatherCommand.GetCurrentWeatherStream()
-			);
+			return this.sourceGenerator.getSourceOfCurrentWeatherData(entityId);
 		};
 	}
 

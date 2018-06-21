@@ -19,9 +19,10 @@ public class Wind {
 	private final short fromDegrees;
 
 	public Wind(final BigDecimal speed, final short fromDegrees) {
+		// Yes, OWM sometimes sends 360 degrees:
 		checkState(
-				fromDegrees >= 0 && fromDegrees < 360,
-				"fromDegrees must be between 0 and 359 degrees"
+				fromDegrees >= 0 && fromDegrees <= 360,
+				"fromDegrees should be between 0 and 360, but received [" + fromDegrees + "]"
 		);
 
 		this.speed = speed;
