@@ -1,6 +1,7 @@
 package com.scottlogic.weather.weatherservice.api;
 
 import akka.NotUsed;
+import akka.stream.javadsl.Source;
 import com.lightbend.lagom.javadsl.api.Descriptor;
 import com.lightbend.lagom.javadsl.api.Service;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
@@ -17,13 +18,15 @@ import static com.lightbend.lagom.javadsl.api.transport.Method.GET;
  */
 public interface WeatherService extends Service {
 
-	ServiceCall<NotUsed, WeatherDataResponse> getCurrentWeather(String location);
+	ServiceCall<NotUsed, WeatherDataResponse> currentWeather(String location);
+	ServiceCall<NotUsed, Source<WeatherDataResponse, ?>> currentWeatherStream();
 
 	@Override
 	default Descriptor descriptor() {
 		return named("weather-service")
 				.withCalls(
-						restCall(GET, "/api/weather-service/current/:location", this::getCurrentWeather)
+						restCall(GET, "/api/weather-service/current/:location", this::currentWeather),
+						restCall(GET, "/api/weather-service/streaming/current", this::currentWeatherStream)
 				)
 				.withAutoAcl(true);
 	}

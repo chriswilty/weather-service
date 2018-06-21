@@ -1,16 +1,14 @@
 package com.scottlogic.weather.weatherservice.impl;
 
 import akka.NotUsed;
+import akka.stream.javadsl.Source;
 import com.google.inject.Inject;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.scottlogic.weather.owmadapter.api.OwmAdapter;
-import com.scottlogic.weather.owmadapter.api.message.WeatherData;
 import com.scottlogic.weather.weatherservice.api.WeatherService;
-import com.scottlogic.weather.weatherservice.api.message.Sun;
-import com.scottlogic.weather.weatherservice.api.message.Temperature;
-import com.scottlogic.weather.weatherservice.api.message.Weather;
 import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
-import com.scottlogic.weather.weatherservice.api.message.Wind;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,50 +18,42 @@ import org.slf4j.LoggerFactory;
 public class WeatherServiceImpl implements WeatherService {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
+
+	// No user sessions for now; just one entity:
+	private final String entityId = "default";
+
 	private final OwmAdapter owmAdapterService;
+	private final PersistentEntityRegistryFacade persistentEntityRegistryFacade;
 
 	@Inject
-	public WeatherServiceImpl(final OwmAdapter owmAdapter) {
+	public WeatherServiceImpl(final OwmAdapter owmAdapter, final PersistentEntityRegistryFacade persistentEntityRegistryFacade) {
 		this.owmAdapterService = owmAdapter;
+		this.persistentEntityRegistryFacade = persistentEntityRegistryFacade;
+		persistentEntityRegistryFacade.register(WeatherEntity.class);
 	}
 
 	@Override
-	public ServiceCall<NotUsed, WeatherDataResponse> getCurrentWeather(final String location) {
+	public ServiceCall<NotUsed, WeatherDataResponse> currentWeather(final String location) {
 		return request -> {
 			log.info("Received request for current weather in [{}]", location);
 
-			return owmAdapterService.getCurrentWeather(location).invoke()
-					.thenApply(this::transformWeatherData)
+			return this.owmAdapterService.getCurrentWeather(location).invoke()
+					.thenApply(MessageUtils::transformWeatherData)
 					.thenApply(this::logResponse);
 		};
 	}
 
-	private WeatherDataResponse transformWeatherData(final WeatherData weatherData) {
-		return WeatherDataResponse.builder()
-				.location(weatherData.getName())
-				.measured(weatherData.getMeasured())
-				.weather(Weather.builder()
-						.id(weatherData.getWeather().getId())
-						.description(weatherData.getWeather().getDescription())
-						.build()
-				)
-				.temperature(Temperature.builder()
-						.current(weatherData.getTemperature().getCurrent())
-						.minimum(weatherData.getTemperature().getMinimum())
-						.maximum(weatherData.getTemperature().getMaximum())
-						.build()
-				)
-				.wind(Wind.builder()
-						.fromDegrees(weatherData.getWind().getFromDegrees())
-						.speed(weatherData.getWind().getSpeed())
-						.build()
-				)
-				.sun(Sun.builder()
-						.sunrise(weatherData.getSun().getSunrise())
-						.sunset(weatherData.getSun().getSunset())
-						.build()
-				)
-				.build();
+	@Override
+	public ServiceCall<NotUsed, Source<WeatherDataResponse, ?>> currentWeatherStream() {
+		return request -> {
+			log.info("Received request for stream of current weather");
+
+			return this.persistentEntityRegistryFacade.sendCommandToPersistentEntity(
+					WeatherEntity.class,
+					entityId,
+					new WeatherCommand.GetCurrentWeatherStream()
+			);
+		};
 	}
 
 	private WeatherDataResponse logResponse(final WeatherDataResponse response) {
