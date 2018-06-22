@@ -8,7 +8,7 @@ import akka.stream.testkit.javadsl.TestSink;
 import akka.testkit.javadsl.TestKit;
 import com.google.common.collect.ImmutableList;
 import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
-import com.scottlogic.weather.weatherservice.api.message.internal.WeatherStreamParameters;
+import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.GetWeatherStreamParameters;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherEntity;
 import com.scottlogic.weather.weatherservice.impl.stub.OwmAdapterStub;
@@ -63,7 +63,7 @@ class SourceGeneratorTest {
 
 	@Test
 	void getSourceOfCurrentWeatherData_ReturnsStreamOfDataForLocationsInEntityState() {
-		final short emitFrequency = 2;
+		final int emitFrequency = 2;
 		final List<String> locations = ImmutableList.of("London, UK", "Paris, FR", "New York, US");
 
 		when(registryFacade.sendCommandToPersistentEntity(

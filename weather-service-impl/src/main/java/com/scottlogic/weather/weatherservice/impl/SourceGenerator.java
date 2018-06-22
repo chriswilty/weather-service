@@ -4,7 +4,7 @@ import akka.stream.javadsl.Source;
 import com.google.inject.Inject;
 import com.scottlogic.weather.owmadapter.api.OwmAdapter;
 import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
-import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.GetWeatherStreamParameters;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +31,7 @@ public class SourceGenerator {
 		return this.persistentEntityRegistryFacade.sendCommandToPersistentEntity(
 				WeatherEntity.class,
 				entityId,
-				new WeatherCommand.GetWeatherStreamParameters()
+				new GetWeatherStreamParameters()
 		).thenApply(weatherStreamParameters ->
 				Source.cycle(() -> weatherStreamParameters.getLocations().iterator())
 						.mapAsync(3, this::getCurrentWeatherForLocation)

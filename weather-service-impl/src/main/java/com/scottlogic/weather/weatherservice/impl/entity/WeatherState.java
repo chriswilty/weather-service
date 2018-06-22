@@ -11,17 +11,17 @@ import java.util.List;
 
 @Value
 @Wither
-@Builder
+@Builder(toBuilder = true)
 public final class WeatherState implements CompressedJsonable {
 
 	public static final WeatherState INITIAL_STATE = WeatherState.builder()
-			.emitFrequencySecs((short) 3)
+			.emitFrequencySecs(3)
 			.location("Edinburgh, GB")
 			.location("London, GB")
 			.location("Falkirk, GB")
 			.build();
 
-	short emitFrequencySecs;
+	int emitFrequencySecs;
 
 	@NonNull
 	@Singular
