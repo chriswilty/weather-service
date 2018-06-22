@@ -1,4 +1,4 @@
-package com.scottlogic.weather.weatherservice.api.message.internal;
+package com.scottlogic.weather.weatherservice.api.message;
 
 import com.lightbend.lagom.serialization.Jsonable;
 import lombok.Builder;
@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 public class WeatherStreamParameters implements Jsonable {
 
-	short emitFrequencySeconds;
+	int emitFrequencySeconds;
 
 	@Singular
 	@NonNull

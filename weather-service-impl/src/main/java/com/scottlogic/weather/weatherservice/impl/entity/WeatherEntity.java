@@ -1,12 +1,21 @@
 package com.scottlogic.weather.weatherservice.impl.entity;
 
+import akka.Done;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
-import com.scottlogic.weather.weatherservice.api.message.internal.WeatherStreamParameters;
+import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.AddLocation;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.ChangeEmitFrequency;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.GetWeatherStreamParameters;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.RemoveLocation;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherEvent.EmitFrequencyChanged;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherEvent.LocationAdded;
+import com.scottlogic.weather.weatherservice.impl.entity.WeatherEvent.LocationRemoved;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
+
+import static com.google.common.collect.ImmutableList.toImmutableList;
 
 /**
  * This is an event sourced entity. It has a state, {@link WeatherState}, which stores the current
@@ -37,6 +46,55 @@ public class WeatherEntity extends PersistentEntity<WeatherCommand, WeatherEvent
 	public Behavior initialBehavior(Optional<WeatherState> snapshotState) {
 		final BehaviorBuilder b = newBehaviorBuilder(
 				snapshotState.orElse(WeatherState.INITIAL_STATE)
+		);
+
+		b.setCommandHandler(ChangeEmitFrequency.class, (cmd, ctx) -> {
+			log.info("Received command to change emit frequency to [{}] seconds", cmd.getFrequencySeconds());
+			return ctx.thenPersist(
+					new EmitFrequencyChanged(cmd.getFrequencySeconds()),
+					evt -> ctx.reply(Done.getInstance())
+			);
+		});
+		b.setEventHandler(
+				EmitFrequencyChanged.class,
+				evt -> state().withEmitFrequencySecs(evt.getFrequency())
+		);
+
+		b.setCommandHandler(AddLocation.class, (cmd, ctx) -> {
+			log.info("Received command to add location [{}]", cmd.getLocation());
+			return ctx.thenPersist(
+					new LocationAdded(cmd.getLocation()),
+					evt -> ctx.reply(Done.getInstance())
+			);
+		});
+		b.setEventHandler(
+				LocationAdded.class,
+				evt -> state().toBuilder()
+						.location(evt.getLocation())
+						.build()
+		);
+
+		b.setCommandHandler(RemoveLocation.class, (cmd, ctx) -> {
+			final String location = cmd.getLocation();
+			log.info("Received command to remove location [{}]", location);
+
+			if (state().getLocations().contains(location)) {
+				return ctx.thenPersist(
+						new LocationRemoved(cmd.getLocation()),
+						evt -> ctx.reply(Done.getInstance())
+				);
+			} else {
+				ctx.reply(Done.getInstance());
+				return ctx.done();
+			}
+		});
+		b.setEventHandler(
+				LocationRemoved.class,
+				evt -> state().withLocations(
+						state().getLocations().stream()
+								.filter(loc -> !loc.equals(evt.getLocation()))
+								.collect(toImmutableList())
+				)
 		);
 
 		b.setReadOnlyCommandHandler(GetWeatherStreamParameters.class, (cmd, ctx) -> {
