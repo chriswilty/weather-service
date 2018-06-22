@@ -86,7 +86,7 @@ class WeatherServiceTest {
 	}
 
 	@Test
-	void weatherStreamParameters_AsksWeatherEntity() throws Exception {
+	void weatherStreamParameters_SendsCommandToEntity() throws Exception {
 		final WeatherStreamParameters expectedResponse = WeatherStreamParameters.builder()
 				.location("Aaaaa, AA")
 				.location("Bbbbbbb")
