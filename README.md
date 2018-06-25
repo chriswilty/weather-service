@@ -27,8 +27,9 @@ This is intended as a very simple showcase of
 - `GET ws: /api/weather-service/streaming/current`
 
   Retrieves a continuous stream of current weather data for a pre-defined list of locations; data
-  for each location in the list are emitted in turn, one every 3 seconds. In a future release, users
-  will be able to add and remove locations, and modify the emit frequency.
+  for each location in the list are emitted in turn, by default one every 3 seconds. Note that
+  changing the update frequency or adding / removing locations will be reflected in currently open
+  streams, not just newly connected ones; see [Streaming Parameters](#streaming-parameters).
 
 #### Response
   Weather data are returned in a specific format; see example below.
@@ -113,8 +114,8 @@ This is intended as a very simple showcase of
   current list of locations.
 
 ## Future Work
-- Real-time changes to open weather streams when parameters are updated
-- 5-day weather forecast
+- Better use of flows: re-build a source in response to events that change stream parameters.
+- 5-day weather forecast.
 - Ability to provide a numeric identifier for a location, as defined by OpenWeatherMap, for
   unambiguous identification.
 - A simple front-end app for displaying streaming weather data.
