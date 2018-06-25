@@ -1,7 +1,6 @@
 package com.scottlogic.weather.weatherservice.impl;
 
 import akka.Done;
-import akka.stream.javadsl.Source;
 import com.lightbend.lagom.javadsl.api.transport.BadRequest;
 import com.lightbend.lagom.javadsl.api.transport.NotFound;
 import com.scottlogic.weather.owmadapter.api.message.Unauthorized;
@@ -29,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
@@ -38,7 +38,8 @@ class WeatherServiceTest {
 	private final String entityId = "default";
 	private final CompletableFuture<Done> doneFuture = CompletableFuture.completedFuture(Done.getInstance());
 
-	@Mock private SourceGenerator sourceGenerator;
+	@Mock private StreamGeneratorFactory streamGeneratorFactory;
+	@Mock private StreamGenerator streamGenerator;
 	@Mock private PersistentEntityRegistryFacade registryFacade;
 
 	private WeatherServiceImpl sut;
@@ -46,7 +47,8 @@ class WeatherServiceTest {
 	@BeforeEach
 	void beforeEach() {
 		initMocks(this);
-		sut = new WeatherServiceImpl(new OwmAdapterStub(), sourceGenerator, registryFacade);
+		when(streamGeneratorFactory.get()).thenReturn(streamGenerator);
+		sut = new WeatherServiceImpl(new OwmAdapterStub(), streamGeneratorFactory, registryFacade);
 	}
 
 	@Test
@@ -73,16 +75,8 @@ class WeatherServiceTest {
 
 	@Test
 	void currentWeatherStream_InvokesSourceGeneratorAndGetsBackASource() throws Exception {
-		final Source<WeatherDataResponse, ?> expectedSource = Source.empty();
-
-		when(
-				sourceGenerator.getSourceOfCurrentWeatherData(entityId)
-		).thenReturn(
-				CompletableFuture.completedFuture(expectedSource)
-		);
-
-		final Source<WeatherDataResponse, ?> result = sut.currentWeatherStream().invoke().toCompletableFuture().get(5, SECONDS);
-		assertThat(result, is(expectedSource));
+		sut.currentWeatherStream().invoke().toCompletableFuture().get(5, SECONDS);
+		verify(streamGenerator).getSourceOfCurrentWeatherData(entityId);
 	}
 
 	@Test

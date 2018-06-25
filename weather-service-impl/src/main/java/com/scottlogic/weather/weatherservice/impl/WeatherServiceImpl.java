@@ -21,6 +21,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
  * Implementation of the WeatherService.
  */
@@ -32,17 +34,17 @@ public class WeatherServiceImpl implements WeatherService {
 	private final String entityId = "default";
 
 	private final OwmAdapter owmAdapterService;
-	private final SourceGenerator sourceGenerator;
+	private final StreamGeneratorFactory streamGeneratorFactory;
 	private final PersistentEntityRegistryFacade entityRegistryFacade;
 
 	@Inject
 	public WeatherServiceImpl(
 			final OwmAdapter owmAdapter,
-			final SourceGenerator sourceGenerator,
+			final StreamGeneratorFactory streamGeneratorFactory,
 			final PersistentEntityRegistryFacade entityRegistryFacade
 	) {
 		this.owmAdapterService = owmAdapter;
-		this.sourceGenerator = sourceGenerator;
+		this.streamGeneratorFactory = streamGeneratorFactory;
 		this.entityRegistryFacade = entityRegistryFacade;
 		this.entityRegistryFacade.register(WeatherEntity.class);
 	}
@@ -61,7 +63,7 @@ public class WeatherServiceImpl implements WeatherService {
 	public ServiceCall<NotUsed, Source<WeatherDataResponse, ?>> currentWeatherStream() {
 		return request -> {
 			log.info("Received request for stream of current weather");
-			return this.sourceGenerator.getSourceOfCurrentWeatherData(entityId);
+			return CompletableFuture.completedFuture(this.streamGeneratorFactory.get().getSourceOfCurrentWeatherData(entityId));
 		};
 	}
 

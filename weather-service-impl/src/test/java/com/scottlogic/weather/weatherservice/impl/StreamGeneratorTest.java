@@ -3,6 +3,7 @@ package com.scottlogic.weather.weatherservice.impl;
 import akka.actor.ActorSystem;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
+import akka.stream.javadsl.Source;
 import akka.stream.testkit.TestSubscriber.Probe;
 import akka.stream.testkit.javadsl.TestSink;
 import akka.testkit.javadsl.TestKit;
@@ -32,7 +33,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
-class SourceGeneratorTest {
+class StreamGeneratorTest {
 
 	private static ActorSystem system;
 	private static Materializer materializer;
@@ -42,7 +43,7 @@ class SourceGeneratorTest {
 
 	@Mock private PersistentEntityRegistryFacade registryFacade;
 
-	private SourceGenerator sut;
+	private StreamGenerator sut;
 
 	@BeforeAll
 	static void setup() {
@@ -55,16 +56,18 @@ class SourceGeneratorTest {
 		TestKit.shutdownActorSystem(system);
 		system = null;
 	}
+
 	@BeforeEach
 	void beforeEach() {
 		initMocks(this);
-		sut = new SourceGenerator(new OwmAdapterStub(), registryFacade);
+		sut = new StreamGenerator(new OwmAdapterStub(), registryFacade, system);
 	}
 
 	@Test
 	void getSourceOfCurrentWeatherData_ReturnsStreamOfDataForLocationsInEntityState() {
 		final int emitFrequency = 2;
 		final List<String> locations = ImmutableList.of("London, UK", "Paris, FR", "New York, US");
+		final FiniteDuration safeDuration = FiniteDuration.apply(emitFrequency + 1, TimeUnit.SECONDS);
 
 		when(registryFacade.sendCommandToPersistentEntity(
 				eq(WeatherEntity.class),
@@ -79,27 +82,23 @@ class SourceGeneratorTest {
 				)
 		);
 
-		sut.getSourceOfCurrentWeatherData(entityId)
-				.thenAccept(source -> {
-					final FiniteDuration safeDuration = FiniteDuration.apply(emitFrequency + 1, TimeUnit.SECONDS);
-					final Probe<WeatherDataResponse> probe = source.runWith(TestSink.probe(system), materializer);
-					probe.request(4);
+		final Source<WeatherDataResponse, ?> source = sut.getSourceOfCurrentWeatherData(entityId);
+		final Probe<WeatherDataResponse> probe = source.runWith(TestSink.probe(system), materializer);
+		probe.request(4);
 
-					final WeatherDataResponse elementOne = probe.expectNext(safeDuration);
-					log.info("Stream emitted " + elementOne);
-					final WeatherDataResponse elementTwo = probe.expectNext(safeDuration);
-					log.info("Stream emitted " + elementTwo);
-					final WeatherDataResponse elementThree = probe.expectNext(safeDuration);
-					log.info("Stream emitted " + elementThree);
-					final WeatherDataResponse elementFour = probe.expectNext(safeDuration);
-					log.info("Stream emitted " + elementFour);
-					probe.cancel();
+		final WeatherDataResponse elementOne = probe.expectNext(safeDuration);
+		log.info("Stream emitted " + elementOne);
+		final WeatherDataResponse elementTwo = probe.expectNext(safeDuration);
+		log.info("Stream emitted " + elementTwo);
+		final WeatherDataResponse elementThree = probe.expectNext(safeDuration);
+		log.info("Stream emitted " + elementThree);
+		final WeatherDataResponse elementFour = probe.expectNext(safeDuration);
+		log.info("Stream emitted " + elementFour);
+		probe.cancel();
 
-					assertThat(elementOne.getLocation(), is(locations.get(0)));
-					assertThat(elementTwo.getLocation(), is(locations.get(1)));
-					assertThat(elementThree.getLocation(), is(locations.get(2)));
-					assertThat(elementFour.getLocation(), is(locations.get(0)));
-
-				});
+		assertThat(elementOne.getLocation(), is(locations.get(0)));
+		assertThat(elementTwo.getLocation(), is(locations.get(1)));
+		assertThat(elementThree.getLocation(), is(locations.get(2)));
+		assertThat(elementFour.getLocation(), is(locations.get(0)));
 	}
 }
