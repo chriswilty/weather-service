@@ -2,10 +2,19 @@ package com.scottlogic.weather.weatherservice.impl.entity;
 
 import akka.Done;
 import akka.actor.ActorSystem;
+import akka.stream.ActorMaterializer;
+import akka.stream.Materializer;
+import akka.stream.testkit.TestSubscriber.Probe;
+import akka.stream.testkit.javadsl.TestSink;
 import akka.testkit.javadsl.TestKit;
 import com.google.common.collect.ImmutableList;
+import com.lightbend.lagom.internal.javadsl.pubsub.PubSubRegistryImpl;
+import com.lightbend.lagom.javadsl.pubsub.PubSubRef;
+import com.lightbend.lagom.javadsl.pubsub.PubSubRegistry;
+import com.lightbend.lagom.javadsl.pubsub.TopicId;
 import com.lightbend.lagom.javadsl.testkit.PersistentEntityTestDriver;
 import com.lightbend.lagom.javadsl.testkit.PersistentEntityTestDriver.Outcome;
+import com.scottlogic.weather.weatherservice.api.message.StreamParametersUpdated;
 import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.AddLocation;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.ChangeEmitFrequency;
@@ -14,15 +23,19 @@ import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.RemoveLo
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherEvent.EmitFrequencyChanged;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherEvent.LocationAdded;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherEvent.LocationRemoved;
+import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import scala.concurrent.duration.Duration;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -30,27 +43,36 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isA;
+import static org.mockito.MockitoAnnotations.initMocks;
 
 @DisplayName("Tests for the persistent entity storing weather stream parameters")
 class WeatherEntityTest {
 	private static ActorSystem system;
+	private static Materializer materializer;
+	private static PubSubRegistry pubSubRegistry;
 
+	private final String entityId = "default";
 	private PersistentEntityTestDriver<WeatherCommand, WeatherEvent, WeatherState> testDriver;
 
 	@BeforeAll
 	static void setup() {
 		system = ActorSystem.create("WeatherEntityTest");
+		materializer = ActorMaterializer.create(system);
+		pubSubRegistry = new PubSubRegistryImpl(system, ConfigFactory.parseString("subscriber-buffer-size: 2"));
 	}
 
 	@AfterAll
 	static void teardown() {
 		TestKit.shutdownActorSystem(system);
+		pubSubRegistry = null;
+		materializer = null;
 		system = null;
 	}
 
 	@BeforeEach
 	void beforeEach() {
-		testDriver = new PersistentEntityTestDriver<>(system, new WeatherEntity(), "default");
+		initMocks(this);
+		testDriver = new PersistentEntityTestDriver<>(system, new WeatherEntity(pubSubRegistry), entityId);
 	}
 
 	@Test
@@ -87,6 +109,32 @@ class WeatherEntityTest {
 
 		assertThat(outcome.getReplies(), hasSize(1));
 		assertThat((Done) outcome.getReplies().get(0), isA(Done.class));
+	}
+
+	@Test
+	@Disabled(
+			"Testing pubsub seems ludicrously difficult; currently not getting delivery of the " +
+			"message to DistributedPubSubMediator, but it seems to work fine in the actual " +
+			"service. PubSubRef is not mockable as it is final, so we need to subscribe for real."
+	)
+	void commandChangeEmitFrequency_PublishesStreamParameters() {
+		final PubSubRef<StreamParametersUpdated> pubSub = pubSubRegistry.refFor(
+				TopicId.of(StreamParametersUpdated.class, entityId)
+		);
+		final Probe<StreamParametersUpdated> probe = pubSub.subscriber().runWith(TestSink.probe(system), materializer);
+		probe.request(1);
+
+		final WeatherState initialState = testDriver.initialize(Optional.empty()).state();
+		final int frequency = 99;
+		final StreamParametersUpdated expectedMessage = StreamParametersUpdated.builder()
+				.emitFrequencySecs(frequency)
+				.locations(initialState.getLocations())
+				.build();
+
+		testDriver.run(new ChangeEmitFrequency(frequency));
+
+		final StreamParametersUpdated result = probe.expectNext(Duration.create(5, TimeUnit.SECONDS));
+		assertThat(result, is(expectedMessage));
 	}
 
 	@Test

@@ -8,11 +8,14 @@ import akka.stream.testkit.TestSubscriber.Probe;
 import akka.stream.testkit.javadsl.TestSink;
 import akka.testkit.javadsl.TestKit;
 import com.google.common.collect.ImmutableList;
+import com.lightbend.lagom.internal.javadsl.pubsub.PubSubRegistryImpl;
+import com.lightbend.lagom.javadsl.pubsub.PubSubRegistry;
 import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
 import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.GetWeatherStreamParameters;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherEntity;
 import com.scottlogic.weather.weatherservice.impl.stub.OwmAdapterStub;
+import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +40,7 @@ class StreamGeneratorTest {
 
 	private static ActorSystem system;
 	private static Materializer materializer;
+	private static PubSubRegistry pubSubRegistry;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 	private final String entityId = "default";
@@ -47,20 +51,23 @@ class StreamGeneratorTest {
 
 	@BeforeAll
 	static void setup() {
-		system = ActorSystem.create("WeatherEntityTest");
+		system = ActorSystem.create("StreamGeneratorTest");
 		materializer = ActorMaterializer.create(system);
+		pubSubRegistry = new PubSubRegistryImpl(system, ConfigFactory.parseString("subscriber-buffer-size: 2"));
 	}
 
 	@AfterAll
 	static void teardown() {
 		TestKit.shutdownActorSystem(system);
+		pubSubRegistry = null;
+		materializer = null;
 		system = null;
 	}
 
 	@BeforeEach
 	void beforeEach() {
 		initMocks(this);
-		sut = new StreamGenerator(new OwmAdapterStub(), registryFacade, system);
+		sut = new StreamGenerator(new OwmAdapterStub(), registryFacade, materializer, pubSubRegistry, entityId);
 	}
 
 	@Test
@@ -82,7 +89,7 @@ class StreamGeneratorTest {
 				)
 		);
 
-		final Source<WeatherDataResponse, ?> source = sut.getSourceOfCurrentWeatherData(entityId);
+		final Source<WeatherDataResponse, ?> source = sut.getSourceOfCurrentWeatherData();
 		final Probe<WeatherDataResponse> probe = source.runWith(TestSink.probe(system), materializer);
 		probe.request(4);
 
