@@ -3,11 +3,9 @@ package com.scottlogic.weather.weatherservice.impl.entity;
 import akka.Done;
 import com.google.inject.Inject;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
-import com.lightbend.lagom.javadsl.pubsub.PubSubRef;
-import com.lightbend.lagom.javadsl.pubsub.PubSubRegistry;
-import com.lightbend.lagom.javadsl.pubsub.TopicId;
 import com.scottlogic.weather.weatherservice.api.message.StreamParametersUpdated;
 import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
+import com.scottlogic.weather.weatherservice.impl.PubSubRegistryFacade;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.AddLocation;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.ChangeEmitFrequency;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.GetWeatherStreamParameters;
@@ -43,12 +41,11 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 public class WeatherEntity extends PersistentEntity<WeatherCommand, WeatherEvent, WeatherState> {
 
 	private final Logger log = LoggerFactory.getLogger(this.getClass());
-	private final PubSubRegistry pubSubRegistry;
-	private PubSubRef<StreamParametersUpdated> parametersUpdatedPublisher;
+	private final PubSubRegistryFacade pubSubRegistryFacade;
 
 	@Inject
-	public WeatherEntity(final PubSubRegistry pubSubRegistry) {
-		this.pubSubRegistry = pubSubRegistry;
+	public WeatherEntity(final PubSubRegistryFacade pubSubRegistryFacade) {
+		this.pubSubRegistryFacade = pubSubRegistryFacade;
 	}
 
 	/**
@@ -57,9 +54,6 @@ public class WeatherEntity extends PersistentEntity<WeatherCommand, WeatherEvent
 	 */
 	@Override
 	public Behavior initialBehavior(Optional<WeatherState> snapshotState) {
-		// Feels like this shouldn't be here, however entityId is not set until after construction.
-		parametersUpdatedPublisher = pubSubRegistry.refFor(TopicId.of(StreamParametersUpdated.class, entityId()));
-
 		final BehaviorBuilder b = newBehaviorBuilder(
 				snapshotState.orElse(WeatherState.INITIAL_STATE)
 		);
@@ -136,11 +130,13 @@ public class WeatherEntity extends PersistentEntity<WeatherCommand, WeatherEvent
 
 	private void publishStreamParameters() {
 		log.info("Publishing change in stream parameters");
-		parametersUpdatedPublisher.publish(
+		pubSubRegistryFacade.publish(
+				StreamParametersUpdated.class,
 				StreamParametersUpdated.builder()
 						.locations(state().getLocations())
 						.emitFrequencySecs(state().getEmitFrequencySecs())
-						.build()
+						.build(),
+				Optional.of(entityId())
 		);
 	}
 

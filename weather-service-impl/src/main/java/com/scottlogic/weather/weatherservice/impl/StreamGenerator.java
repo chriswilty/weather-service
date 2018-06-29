@@ -9,9 +9,6 @@ import akka.stream.javadsl.Keep;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import com.google.inject.Inject;
-import com.lightbend.lagom.javadsl.pubsub.PubSubRef;
-import com.lightbend.lagom.javadsl.pubsub.PubSubRegistry;
-import com.lightbend.lagom.javadsl.pubsub.TopicId;
 import com.scottlogic.weather.owmadapter.api.OwmAdapter;
 import com.scottlogic.weather.weatherservice.api.message.StreamParametersUpdated;
 import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
@@ -35,8 +32,8 @@ public class StreamGenerator {
 
 	private final OwmAdapter owmAdapter;
 	private final PersistentEntityRegistryFacade persistentEntityRegistryFacade;
+	private final PubSubRegistryFacade pubSubRegistryFacade;
 	private final Materializer materializer;
-	private final PubSubRef<StreamParametersUpdated> streamParametersPubSub;
 	private final String entityId;
 
 	private Optional<KillSwitch> sourceKillSwitch;
@@ -45,40 +42,44 @@ public class StreamGenerator {
 	public StreamGenerator(
 			final OwmAdapter owmAdapter,
 			final PersistentEntityRegistryFacade persistentEntityRegistryFacade,
+			final PubSubRegistryFacade pubSubRegistryFacade,
 			final Materializer materializer,
-			final PubSubRegistry pubSubRegistry,
 			final String entityId
 	) {
 		this.owmAdapter = owmAdapter;
 		this.persistentEntityRegistryFacade = persistentEntityRegistryFacade;
+		this.pubSubRegistryFacade = pubSubRegistryFacade;
 		this.materializer = materializer;
 		this.entityId = entityId;
-		this.streamParametersPubSub = pubSubRegistry.refFor(TopicId.of(StreamParametersUpdated.class, entityId));
 		this.sourceKillSwitch = Optional.empty();
 	}
 
 	public Source<WeatherDataResponse, ?> getSourceOfCurrentWeatherData() {
 		return Source.<WeatherDataResponse>actorRef(5, OverflowStrategy.dropHead())
 				.mapMaterializedValue(actorRef -> {
+					// Set up the weather data stream
 					this.sourceKillSwitch = generateCancellableStreamOfWeatherData(
 							sourceOfCurrentWeatherData(entityId),
 							actorRef
 					);
-					this.streamParametersPubSub.subscriber().runForeach(
-							parametersUpdated -> {
-								log.info("Received notification of stream parameter changes");
-								this.terminateWeatherSourceAndReplaceKillSwitch(
-										generateCancellableStreamOfWeatherData(
-												sourceOfCurrentWeatherData(
-														parametersUpdated.getEmitFrequencySecs(),
-														parametersUpdated.getLocations()
-												),
-												actorRef
-										)
-								);
-							},
-							materializer
-					);
+					// Subscribe to stream parameter changes.
+					this.pubSubRegistryFacade
+							.subscribe(StreamParametersUpdated.class, Optional.of(entityId))
+							.runForeach(
+									parametersUpdated -> {
+										log.info("Received notification of stream parameter changes");
+										this.terminateWeatherSourceAndReplaceKillSwitch(
+												generateCancellableStreamOfWeatherData(
+														sourceOfCurrentWeatherData(
+																parametersUpdated.getEmitFrequencySecs(),
+																parametersUpdated.getLocations()
+														),
+														actorRef
+												)
+										);
+									},
+									materializer
+							);
 					return actorRef;
 				}).watchTermination((source, future) -> {
 					// This is termination of the ActorRef source.
@@ -131,7 +132,6 @@ public class StreamGenerator {
 		this.sourceKillSwitch.ifPresent(killSwitch -> {
 			killSwitch.shutdown();
 			log.info("Upstream weather source terminated successfully");
-			this.sourceKillSwitch = Optional.empty();
 		});
 		this.sourceKillSwitch = replacement;
 	}
