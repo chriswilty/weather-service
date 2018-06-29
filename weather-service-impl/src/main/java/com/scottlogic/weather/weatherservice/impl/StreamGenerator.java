@@ -1,6 +1,10 @@
 package com.scottlogic.weather.weatherservice.impl;
 
+import akka.NotUsed;
 import akka.actor.ActorRef;
+import akka.japi.function.Creator;
+import akka.japi.function.Function2;
+import akka.stream.Graph;
 import akka.stream.KillSwitch;
 import akka.stream.KillSwitches;
 import akka.stream.Materializer;
@@ -36,7 +40,7 @@ public class StreamGenerator {
 	private final Materializer materializer;
 	private final String entityId;
 
-	private Optional<KillSwitch> sourceKillSwitch;
+	private KillSwitch sourceKillSwitch;
 
 	@Inject
 	public StreamGenerator(
@@ -51,14 +55,56 @@ public class StreamGenerator {
 		this.pubSubRegistryFacade = pubSubRegistryFacade;
 		this.materializer = materializer;
 		this.entityId = entityId;
-		this.sourceKillSwitch = Optional.empty();
 	}
 
+	/**
+	 * <p>
+	 *   Generates a source of weather data that will react to stream parameter changes in realtime.
+	 * </p>
+	 * <p>
+	 *   The concept is to create a "source" of weather data which can be reconstructed on-the-fly,
+	 *   and a "sink" which will be a stream passed back to (and terminated by) the client. Incoming
+	 *   messages from the source will be pushed into the sink on demand; as our source and sink are
+	 *   independent, we can reconstruct our source at any stage without affecting the open stream
+	 *   to the client.
+	 * </p>
+	 * <ul>
+	 * <li>
+	 *   The source is created using {@link Source#actorRef(int, OverflowStrategy) Source.actorRef}.
+	 *   Messages can be pushed to the actor, which in turn will push them into the materialized
+	 *   stream. We need to use mapMaterializedValue to get hold of a reference to the ActorRef, so
+	 *   that we can push weather data responses as they come back from the Adapter service.
+	 * </li>
+	 * <li>
+	 *   For the weather data source, we use {@link Source#cycle(Creator) Source.cycle} to
+	 *   continuously loop through the configured locations, mapping each to a call to the Adapter
+	 *   service to fetch weather data, together with
+	 *   {@link Source#throttle(int, Duration) Source.throttle} to regulate the output of weather
+	 *   data elements to the configured frequency.
+	 * </li>
+	 * <li>
+	 *   The source is constructed first time by asking the WeatherEntity for the current stream
+	 *   parameters (locations and emission frequency), and then we subscribe to parameter update
+	 *   messages from the WeatherEntity so that we can rebuild the source on demand, whenever the
+	 *   user modifies the parameters.
+	 * </li>
+	 * <li>
+	 *   In order to be able to close the existing weather data stream whenever the parameters are
+	 *   changed, we use {@link Source#viaMat(Graph, Function2) Source.viaMat} with a
+	 *   {@link KillSwitches#single() KillSwitch flow stage} when we materialize the source. This
+	 *   gives us back a KillSwitch reference, which will allow us to kill the stream by sending a
+	 *   termination message; we can then reconstruct the source and materialize it into a new
+	 *   KillSwitch, ready for the next update.
+	 * </li>
+	 * </ul>
+	 *
+	 * @return a {@link Source} of weather data
+	 */
 	public Source<WeatherDataResponse, ?> getSourceOfCurrentWeatherData() {
-		return Source.<WeatherDataResponse>actorRef(5, OverflowStrategy.dropHead())
+		return Source.<WeatherDataResponse>actorRef(3, OverflowStrategy.dropHead())
 				.mapMaterializedValue(actorRef -> {
 					// Set up the weather data stream
-					this.sourceKillSwitch = generateCancellableStreamOfWeatherData(
+					generateCancellableStreamOfWeatherData(
 							sourceOfCurrentWeatherData(entityId),
 							actorRef
 					);
@@ -66,48 +112,43 @@ public class StreamGenerator {
 					this.pubSubRegistryFacade
 							.subscribe(StreamParametersUpdated.class, Optional.of(entityId))
 							.runForeach(
-									parametersUpdated -> {
-										log.info("Received notification of stream parameter changes");
-										this.terminateWeatherSourceAndReplaceKillSwitch(
-												generateCancellableStreamOfWeatherData(
-														sourceOfCurrentWeatherData(
-																parametersUpdated.getEmitFrequencySecs(),
-																parametersUpdated.getLocations()
-														),
-														actorRef
-												)
+									update -> {
+										log.info("Received notification of stream parameter changes, rebuilding source...");
+										terminateWeatherSource();
+										generateCancellableStreamOfWeatherData(
+												sourceOfCurrentWeatherData(update.getEmitFrequencySecs(), update.getLocations()),
+												actorRef
 										);
 									},
 									materializer
 							);
 					return actorRef;
-				}).watchTermination((source, future) -> {
-					// This is termination of the ActorRef source.
+				})
+				.watchTermination((source, future) -> {
+					// This is termination of the downstream ActorRef sink.
 					future.whenComplete((done, throwable) -> {
-						if (throwable != null) {
-							log.error("Stream of weather data terminated with error", throwable);
-						} else {
-							log.info("Stream of weather data closed following successful completion");
-						}
 						// Always terminate the upstream source cleanly.
-						this.terminateWeatherSourceAndReplaceKillSwitch(Optional.empty());
+						terminateWeatherSource();
+						logStreamTermination(throwable);
 					});
 					return source;
 				});
 	}
 
-	private Optional<KillSwitch> generateCancellableStreamOfWeatherData(
-			final Source<WeatherDataResponse, ?> source,
+	private void generateCancellableStreamOfWeatherData(
+			final Source<WeatherDataResponse, NotUsed> source,
 			final ActorRef actorRef
 	) {
-		return Optional.of(
-				source.viaMat(KillSwitches.single(), Keep.right())
-						.toMat(sinkIntoActorRef(actorRef), Keep.left())
-						.run(this.materializer)
-		);
+		this.sourceKillSwitch = source.viaMat(KillSwitches.single(), Keep.right())
+				.toMat(sinkIntoActorRef(actorRef), Keep.left())
+				.run(this.materializer);
 	}
 
-	private Source<WeatherDataResponse, ?> sourceOfCurrentWeatherData(final String entityId)
+	private Sink<WeatherDataResponse, ?> sinkIntoActorRef(final ActorRef actorRef) {
+		return Sink.foreach(weather -> actorRef.tell(weather, ActorRef.noSender()));
+	}
+
+	private Source<WeatherDataResponse, NotUsed> sourceOfCurrentWeatherData(final String entityId)
 			throws InterruptedException, ExecutionException, TimeoutException {
 		return this.persistentEntityRegistryFacade.sendCommandToPersistentEntity(
 				WeatherEntity.class,
@@ -118,27 +159,31 @@ public class StreamGenerator {
 		).toCompletableFuture().get(5, TimeUnit.SECONDS);
 	}
 
-	private Source<WeatherDataResponse, ?> sourceOfCurrentWeatherData(final int frequency, final List<String> locations) {
+	private Source<WeatherDataResponse, NotUsed> sourceOfCurrentWeatherData(final int frequency, final List<String> locations) {
 		return Source.cycle(locations::iterator)
 				.mapAsync(3, this::getCurrentWeatherForLocation)
 				.throttle(1, Duration.of(frequency, ChronoUnit.SECONDS));
-	}
-
-	private Sink<WeatherDataResponse, ?> sinkIntoActorRef(final ActorRef actorRef) {
-		return Sink.foreach(weather -> actorRef.tell(weather, ActorRef.noSender()));
-	}
-
-	private void terminateWeatherSourceAndReplaceKillSwitch(final Optional<KillSwitch> replacement) {
-		this.sourceKillSwitch.ifPresent(killSwitch -> {
-			killSwitch.shutdown();
-			log.info("Upstream weather source terminated successfully");
-		});
-		this.sourceKillSwitch = replacement;
 	}
 
 	private CompletionStage<WeatherDataResponse> getCurrentWeatherForLocation(final String location) {
 		return this.owmAdapter
 				.getCurrentWeather(location).invoke()
 				.thenApply(MessageUtils::transformWeatherData);
+	}
+
+	private void terminateWeatherSource() {
+		if (this.sourceKillSwitch != null) {
+			this.sourceKillSwitch.shutdown();
+			this.sourceKillSwitch = null;
+			log.info("Upstream weather source terminated successfully");
+		}
+	}
+
+	private void logStreamTermination(final Throwable throwable) {
+		if (throwable != null) {
+			log.error("Client stream of weather data terminated with error", throwable);
+		} else {
+			log.info("Client stream of weather data closed successfully");
+		}
 	}
 }
