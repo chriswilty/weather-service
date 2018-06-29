@@ -1,6 +1,6 @@
 package com.scottlogic.weather.weatherservice.impl;
 
-import akka.actor.ActorSystem;
+import akka.stream.Materializer;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.scottlogic.weather.owmadapter.api.OwmAdapter;
@@ -9,19 +9,24 @@ import com.scottlogic.weather.owmadapter.api.OwmAdapter;
 public class StreamGeneratorFactory {
 
 	private final OwmAdapter owmAdapter;
-	private final PersistentEntityRegistryFacade registryFacade;
-	private final ActorSystem actorSystem;
+	private final PersistentEntityRegistryFacade persistentEntityRegistryFacade;
+	private final PubSubRegistryFacade pubSubRegistryFacade;
+	private final Materializer materializer;
 
 	@Inject
 	public StreamGeneratorFactory(
-			final OwmAdapter owmAdapter, final PersistentEntityRegistryFacade registryFacade, final ActorSystem actorSystem
+			final OwmAdapter owmAdapter,
+			final PersistentEntityRegistryFacade persistentEntityRegistryFacade,
+			PubSubRegistryFacade pubSubRegistryFacade,
+			final Materializer materializer
 	) {
 		this.owmAdapter = owmAdapter;
-		this.registryFacade = registryFacade;
-		this.actorSystem = actorSystem;
+		this.persistentEntityRegistryFacade = persistentEntityRegistryFacade;
+		this.pubSubRegistryFacade = pubSubRegistryFacade;
+		this.materializer = materializer;
 	}
 
-	public StreamGenerator get() {
-		return new StreamGenerator(owmAdapter, registryFacade, actorSystem);
+	public StreamGenerator get(final String entityId) {
+		return new StreamGenerator(owmAdapter, persistentEntityRegistryFacade, pubSubRegistryFacade, materializer, entityId);
 	}
 }

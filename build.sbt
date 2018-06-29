@@ -28,6 +28,7 @@ lazy val `weather-service-impl` = (project in file("weather-service-impl"))
   .settings(
     common,
     libraryDependencies ++= commonImplDeps,
+    libraryDependencies += lagomJavadslPubSub,
     testOptions += Tests.Argument(jupiterTestFramework, "-a", "-v")
   )
   .settings(lagomForkedTestSettings: _*)

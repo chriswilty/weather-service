@@ -47,7 +47,7 @@ class WeatherServiceTest {
 	@BeforeEach
 	void beforeEach() {
 		initMocks(this);
-		when(streamGeneratorFactory.get()).thenReturn(streamGenerator);
+		when(streamGeneratorFactory.get(entityId)).thenReturn(streamGenerator);
 		sut = new WeatherServiceImpl(new OwmAdapterStub(), streamGeneratorFactory, registryFacade);
 	}
 
@@ -76,7 +76,7 @@ class WeatherServiceTest {
 	@Test
 	void currentWeatherStream_InvokesSourceGeneratorAndGetsBackASource() throws Exception {
 		sut.currentWeatherStream().invoke().toCompletableFuture().get(5, SECONDS);
-		verify(streamGenerator).getSourceOfCurrentWeatherData(entityId);
+		verify(streamGenerator).getSourceOfCurrentWeatherData();
 	}
 
 	@Test

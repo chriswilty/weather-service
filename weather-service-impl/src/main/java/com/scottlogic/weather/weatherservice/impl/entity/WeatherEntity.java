@@ -1,8 +1,11 @@
 package com.scottlogic.weather.weatherservice.impl.entity;
 
 import akka.Done;
+import com.google.inject.Inject;
 import com.lightbend.lagom.javadsl.persistence.PersistentEntity;
+import com.scottlogic.weather.weatherservice.api.message.StreamParametersUpdated;
 import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
+import com.scottlogic.weather.weatherservice.impl.PubSubRegistryFacade;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.AddLocation;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.ChangeEmitFrequency;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.GetWeatherStreamParameters;
@@ -14,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
@@ -37,6 +41,12 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 public class WeatherEntity extends PersistentEntity<WeatherCommand, WeatherEvent, WeatherState> {
 
 	private final Logger log = LoggerFactory.getLogger(this.getClass());
+	private final PubSubRegistryFacade pubSubRegistryFacade;
+
+	@Inject
+	public WeatherEntity(final PubSubRegistryFacade pubSubRegistryFacade) {
+		this.pubSubRegistryFacade = pubSubRegistryFacade;
+	}
 
 	/**
 	 * An entity can define different behaviours for different states, but it will
@@ -50,9 +60,9 @@ public class WeatherEntity extends PersistentEntity<WeatherCommand, WeatherEvent
 
 		b.setCommandHandler(ChangeEmitFrequency.class, (cmd, ctx) -> {
 			log.info("Received command to change emit frequency to [{}] seconds", cmd.getFrequencySeconds());
-			return ctx.thenPersist(
+			return ctx.<EmitFrequencyChanged>thenPersist(
 					new EmitFrequencyChanged(cmd.getFrequencySeconds()),
-					evt -> ctx.reply(Done.getInstance())
+					this.<EmitFrequencyChanged>afterStreamParameterChangesPersisted(ctx)
 			);
 		});
 		b.setEventHandler(
@@ -62,9 +72,9 @@ public class WeatherEntity extends PersistentEntity<WeatherCommand, WeatherEvent
 
 		b.setCommandHandler(AddLocation.class, (cmd, ctx) -> {
 			log.info("Received command to add location [{}]", cmd.getLocation());
-			return ctx.thenPersist(
+			return ctx.<LocationAdded>thenPersist(
 					new LocationAdded(cmd.getLocation()),
-					evt -> ctx.reply(Done.getInstance())
+					this.<LocationAdded>afterStreamParameterChangesPersisted(ctx)
 			);
 		});
 		b.setEventHandler(
@@ -79,9 +89,9 @@ public class WeatherEntity extends PersistentEntity<WeatherCommand, WeatherEvent
 			log.info("Received command to remove location [{}]", location);
 
 			if (state().getLocations().contains(location)) {
-				return ctx.thenPersist(
+				return ctx.<LocationRemoved>thenPersist(
 						new LocationRemoved(cmd.getLocation()),
-						evt -> ctx.reply(Done.getInstance())
+						this.<LocationRemoved>afterStreamParameterChangesPersisted(ctx)
 				);
 			} else {
 				ctx.reply(Done.getInstance());
@@ -109,6 +119,25 @@ public class WeatherEntity extends PersistentEntity<WeatherCommand, WeatherEvent
 		});
 
 		return b.build();
+	}
+
+	private <E extends WeatherEvent> Consumer<E> afterStreamParameterChangesPersisted(ReadOnlyCommandContext<Done> ctx) {
+		return (E event) -> {
+			ctx.reply(Done.getInstance());
+			publishStreamParameters();
+		};
+	}
+
+	private void publishStreamParameters() {
+		log.info("Publishing change in stream parameters");
+		pubSubRegistryFacade.publish(
+				StreamParametersUpdated.class,
+				StreamParametersUpdated.builder()
+						.locations(state().getLocations())
+						.emitFrequencySecs(state().getEmitFrequencySecs())
+						.build(),
+				Optional.of(entityId())
+		);
 	}
 
 }

@@ -6,7 +6,9 @@ import akka.testkit.javadsl.TestKit;
 import com.google.common.collect.ImmutableList;
 import com.lightbend.lagom.javadsl.testkit.PersistentEntityTestDriver;
 import com.lightbend.lagom.javadsl.testkit.PersistentEntityTestDriver.Outcome;
+import com.scottlogic.weather.weatherservice.api.message.StreamParametersUpdated;
 import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
+import com.scottlogic.weather.weatherservice.impl.PubSubRegistryFacade;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.AddLocation;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.ChangeEmitFrequency;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.GetWeatherStreamParameters;
@@ -19,7 +21,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -30,11 +34,16 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isA;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.MockitoAnnotations.initMocks;
 
 @DisplayName("Tests for the persistent entity storing weather stream parameters")
 class WeatherEntityTest {
 	private static ActorSystem system;
 
+	private final String entityId = "default";
+	@Mock private PubSubRegistryFacade pubSubRegistryFacade;
 	private PersistentEntityTestDriver<WeatherCommand, WeatherEvent, WeatherState> testDriver;
 
 	@BeforeAll
@@ -50,7 +59,8 @@ class WeatherEntityTest {
 
 	@BeforeEach
 	void beforeEach() {
-		testDriver = new PersistentEntityTestDriver<>(system, new WeatherEntity(), "default");
+		initMocks(this);
+		testDriver = new PersistentEntityTestDriver<>(system, new WeatherEntity(pubSubRegistryFacade), entityId);
 	}
 
 	@Test
@@ -90,6 +100,24 @@ class WeatherEntityTest {
 	}
 
 	@Test
+	void commandChangeEmitFrequency_PublishesStreamParameters() {
+		final WeatherState initialState = testDriver.initialize(Optional.empty()).state();
+		final int frequency = 99;
+		final StreamParametersUpdated expectedMessage = StreamParametersUpdated.builder()
+				.emitFrequencySecs(frequency)
+				.locations(initialState.getLocations())
+				.build();
+
+		testDriver.run(new ChangeEmitFrequency(frequency));
+
+		verify(pubSubRegistryFacade).publish(
+				StreamParametersUpdated.class,
+				expectedMessage,
+				Optional.of(entityId)
+		);
+	}
+
+	@Test
 	void commandAddLocation_PersistsEventAndUpdatesState() {
 		final WeatherState initialState = testDriver.initialize(Optional.empty()).state();
 		final String location = "Somewhere";
@@ -113,6 +141,25 @@ class WeatherEntityTest {
 
 		assertThat(outcome.getReplies(), hasSize(1));
 		assertThat((Done) outcome.getReplies().get(0), isA(Done.class));
+	}
+
+	@Test
+	void commandAddLocation_PublishesStreamParameters() {
+		final WeatherState initialState = testDriver.initialize(Optional.empty()).state();
+		final String location = "Somewhere Else, GB";
+		final StreamParametersUpdated expectedMessage = StreamParametersUpdated.builder()
+				.emitFrequencySecs(initialState.getEmitFrequencySecs())
+				.locations(initialState.getLocations())
+				.location(location)
+				.build();
+
+		testDriver.run(new AddLocation(location));
+
+		verify(pubSubRegistryFacade).publish(
+				StreamParametersUpdated.class,
+				expectedMessage,
+				Optional.of(entityId)
+		);
 	}
 
 	@Test
@@ -141,7 +188,26 @@ class WeatherEntityTest {
 	}
 
 	@Test
-	void commandRemoveLocation_LocationNotFound_NoEventOrStateUpdate_RepliesWithDone() {
+	void commandRemoveLocation_LocationFound_PublishesStreamParameters() {
+		final WeatherState initialState = testDriver.initialize(Optional.empty()).state();
+		final List<String> locations = new ArrayList<>(initialState.getLocations());
+		final String location = locations.remove(locations.size() - 2);
+		final StreamParametersUpdated expectedMessage = StreamParametersUpdated.builder()
+				.emitFrequencySecs(initialState.getEmitFrequencySecs())
+				.locations(locations)
+				.build();
+
+		testDriver.run(new RemoveLocation(location));
+
+		verify(pubSubRegistryFacade).publish(
+				StreamParametersUpdated.class,
+				expectedMessage,
+				Optional.of(entityId)
+		);
+	}
+
+	@Test
+	void commandRemoveLocation_LocationNotFound_NoEventOrStateUpdateOrMessagePublished_RepliesWithDone() {
 		final WeatherState initialState = testDriver.initialize(Optional.empty()).state();
 		final String location = "Trumpsbrain, US";
 
@@ -152,6 +218,8 @@ class WeatherEntityTest {
 		assertThat(outcome.state(), is(initialState));
 		assertThat(outcome.getReplies(), hasSize(1));
 		assertThat((Done) outcome.getReplies().get(0), isA(Done.class));
+
+		verifyZeroInteractions(pubSubRegistryFacade);
 	}
 
 }

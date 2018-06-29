@@ -63,7 +63,7 @@ public class WeatherServiceImpl implements WeatherService {
 	public ServiceCall<NotUsed, Source<WeatherDataResponse, ?>> currentWeatherStream() {
 		return request -> {
 			log.info("Received request for stream of current weather");
-			return CompletableFuture.completedFuture(this.streamGeneratorFactory.get().getSourceOfCurrentWeatherData(entityId));
+			return CompletableFuture.completedFuture(this.streamGeneratorFactory.get(entityId).getSourceOfCurrentWeatherData());
 		};
 	}
 
