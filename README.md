@@ -39,11 +39,23 @@ This is intended as a very simple showcase of
 - `GET ws: /api/weather-service/streaming/current`
 
   Retrieves a continuous stream of current weather data for a pre-defined list of locations; data
-  for each location in the list are emitted in turn, by default one every 3 seconds. Note that
-  changing the update frequency or adding / removing locations will be reflected in currently open
-  streams, not just newly connected ones; see [Streaming Parameters](#streaming-parameters).
+  for each location in the list are emitted in turn, by default one every 3 seconds.
+  
+  Note that changing the update frequency or adding / removing locations will be reflected in
+  currently open streams, not just newly connected ones; see
+  [Streaming Parameters](#streaming-parameters).
 
-#### Response
+- `GET ws: /api/weather-service/streaming/forecast`
+
+  Retrieves a continuous stream of forecast weather data for a pre-defined list of locations; data
+  for each location in the list are emitted in turn, by default one every 3 seconds. Forecast data
+  are for five days, at three-hourly intervals.
+  
+  Note that changing the update frequency or adding / removing locations will be reflected in
+  currently open streams, not just newly connected ones; see
+  [Streaming Parameters](#streaming-parameters).
+
+#### Responses
   Weather data are returned in a specific format; see example below.
   Units are metric, i.e. temperature in degrees celsius, wind speed in m/s, visibility in metres,
   precipitation in millimetres. Note that for _current_ weather data, min and max temperatures
@@ -51,27 +63,78 @@ This is intended as a very simple showcase of
   locations, but could be different for larger cities and metropolitan areas. For forecasts, minimum
   and maximum temperatures will represent the forecasted variation throughout the day.
 
+##### Current Weather
+
 ```json
 {
   "location": "Edinburgh, GB",
-  "measured": "2018-06-19T14:00:00+01:00",
-  "weather": {
-    "id": 522,
-    "description": "crappy pissy rain"
-  },
-  "temperature": {
-    "current": "12.4",
-    "minimum": "10.9",
-    "maximum": "12.9"
-  },
-  "wind": {
-    "speed": "32.0",
-    "fromDegrees": 30
-  },
-  "sun": {
-    "sunrise": "2018-06-19T04:26:06+01:00",
-    "sunset": "2018-06-19T22:02:31+01:00"
+  "current": {
+    "measured": "2018-06-19T14:00:00+01:00",
+    "weather": {
+      "id": 522,
+      "description": "crappy pissy rain"
+    },
+    "temperature": {
+      "current": "12.4",
+      "minimum": "10.9",
+      "maximum": "12.9"
+    },
+    "wind": {
+      "speed": "32.0",
+      "fromDegrees": 30
+    },
+    "sun": {
+      "sunrise": "2018-06-19T04:26:06+01:00",
+      "sunset": "2018-06-19T22:02:31+01:00"
+    }
   }
+}
+```
+
+##### Weather Forecast
+
+```json
+{
+  "location": "Edinburgh, GB",
+  "current": {
+    "measured": "2018-06-19T14:00:00+01:00",
+    "weather": {
+      "id": 522,
+      "description": "crappy pissy rain"
+    },
+    "temperature": {
+      "current": "12.4",
+      "minimum": "10.9",
+      "maximum": "12.9"
+    },
+    "wind": {
+      "speed": "32.0",
+      "fromDegrees": 30
+    },
+    "sun": {
+      "sunrise": "2018-06-19T04:26:06+01:00",
+      "sunset": "2018-06-19T22:02:31+01:00"
+    }
+  },
+  "forecast": [
+    {
+      "measured": "2018-06-19T14:00:00+01:00",
+      "weather": {
+        "id": 522,
+        "description": "crappy pissy rain"
+      },
+      "temperature": {
+        "current": "12.4",
+        "minimum": "10.9",
+        "maximum": "12.9"
+      },
+      "wind": {
+        "speed": "32.0",
+        "fromDegrees": 30
+      }
+    },
+    ...
+  ]
 }
 ```
 
