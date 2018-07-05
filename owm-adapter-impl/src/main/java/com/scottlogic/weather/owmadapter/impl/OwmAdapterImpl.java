@@ -9,15 +9,18 @@ import com.scottlogic.weather.owmadapter.api.message.Temperature;
 import com.scottlogic.weather.owmadapter.api.message.Weather;
 import com.scottlogic.weather.owmadapter.api.message.WeatherData;
 import com.scottlogic.weather.owmadapter.api.message.Wind;
-import com.scottlogic.weather.owmadapter.api.message.internal.OwmWeatherResponse;
+import com.scottlogic.weather.owmadapter.api.message.internal.City;
+import com.scottlogic.weather.owmadapter.api.message.internal.OwmCurrentWeatherResponse;
+import com.scottlogic.weather.owmadapter.api.message.internal.OwmForecastWeatherResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 public class OwmAdapterImpl implements OwmAdapter {
 
@@ -34,45 +37,73 @@ public class OwmAdapterImpl implements OwmAdapter {
 		return request -> {
 			log.info("Received request for current weather in [{}]", location);
 
-			final WeatherData response = this.transformOwmWeatherData(
+			final WeatherData response = this.transformOwmCurrentWeatherData(
 					this.owmClient.getCurrentWeather(location)
 			);
 
-			log.info("Sending current weather data response for [{}]", response.getName());
+			log.info("Sending current weather data response for [{}]", response.getLocation());
 			return CompletableFuture.completedFuture(response);
 		};
 	}
 
-	private WeatherData transformOwmWeatherData(final OwmWeatherResponse owmResponse) {
-		final double latitude = owmResponse.getCoordinates().getLatitude();
-		final double longitude = owmResponse.getCoordinates().getLongitude();
-		final String zoneId = TimezoneMapper.latLngToTimezoneString(latitude, longitude);
+	@Override
+	public ServiceCall<NotUsed, List<WeatherData>> getForecastWeather(String location) {
+		return request -> {
+			log.info("Received request for forecast weather in [{}]", location);
+
+			// TODO Real call to OWM and response transformer function.
+			final List<WeatherData> response = this.transformOwmForecastWeatherData(
+					this.owmClient.getForecastWeather(location)
+			);
+
+			log.info("Sending forecast weather data response for [{}]", response.get(0).getLocation());
+			return CompletableFuture.completedFuture(response);
+		};
+	}
+
+	private WeatherData transformOwmCurrentWeatherData(final OwmCurrentWeatherResponse owmResponse) {
+		final String location = owmResponse.getName() + ", " + owmResponse.getLocaleData().getCountryCode();
+		final String zoneId = TimezoneMapper.latLngToTimezoneString(
+				owmResponse.getCoordinates().getLatitude(),
+				owmResponse.getCoordinates().getLongitude()
+		);
 		log.info("TimeZone is " + zoneId);
 
 		return WeatherData.builder()
 				.id(owmResponse.getId())
-				.name(owmResponse.getName() + ", " + owmResponse.getLocaleData().getCountryCode())
+				.location(location)
 				.measured(instantToOffsetDateTime(owmResponse.getMeasuredAt(), zoneId))
-				.weather(
-						transformWeather(owmResponse.getWeather().get(0))
-				)
-				.temperature(Temperature.builder()
-						.current(owmResponse.getTemperature().getTemp())
-						.minimum(owmResponse.getTemperature().getTempMin())
-						.maximum(owmResponse.getTemperature().getTempMax())
-						.build()
-				)
-				.wind(Wind.builder()
-						.speed(owmResponse.getWind().getSpeed())
-						.fromDegrees(owmResponse.getWind().getFromDegrees())
-						.build()
-				)
+				.weather(transformWeather(owmResponse.getWeather().get(0))) // OWM can return more than one; just use first
+				.temperature(transformTemperature(owmResponse.getTemperature()))
+				.wind(transformWind(owmResponse.getWind()))
 				.sun(Sun.builder()
 						.sunrise(instantToOffsetDateTime(owmResponse.getLocaleData().getSunrise(), zoneId))
 						.sunset(instantToOffsetDateTime(owmResponse.getLocaleData().getSunset(), zoneId))
 						.build()
 				)
 				.build();
+	}
+
+	private List<WeatherData> transformOwmForecastWeatherData(final OwmForecastWeatherResponse owmResponse) {
+		final City city = owmResponse.getCity();
+		final int id = city.getId();
+		final String location = city.getName() + ", " + city.getCountryCode();
+		final String zoneId = TimezoneMapper.latLngToTimezoneString(
+				city.getCoordinates().getLatitude(),
+				city.getCoordinates().getLongitude()
+		);
+
+		return owmResponse.getForecasts().parallelStream()
+				.map(forecast -> WeatherData.builder()
+						.id(id)
+						.location(location)
+						.measured(instantToOffsetDateTime(forecast.getMeasuredAt(), zoneId))
+						.weather(transformWeather(forecast.getWeather().get(0))) // OWM can return more than one; just use first
+						.temperature(transformTemperature(forecast.getTemperature()))
+						.wind(transformWind(forecast.getWind()))
+						.build()
+				)
+				.collect(Collectors.toList());
 	}
 
 	private Weather transformWeather(final com.scottlogic.weather.owmadapter.api.message.internal.Weather owmWeather) {
@@ -82,7 +113,22 @@ public class OwmAdapterImpl implements OwmAdapter {
 				.build();
 	}
 
+	private Temperature transformTemperature(final com.scottlogic.weather.owmadapter.api.message.internal.Temperature temp) {
+		return Temperature.builder()
+				.minimum(temp.getTempMin())
+				.current(temp.getTemp())
+				.maximum(temp.getTempMax())
+				.build();
+	}
+
+	private Wind transformWind(final com.scottlogic.weather.owmadapter.api.message.internal.Wind wind) {
+		return Wind.builder()
+				.fromDegrees(wind.getFromDegrees())
+				.speed(wind.getSpeed())
+				.build();
+	}
+
 	private OffsetDateTime instantToOffsetDateTime(final Instant instant, final String zoneId) {
-		return ZonedDateTime.ofInstant(instant, ZoneId.of(zoneId)).toOffsetDateTime();
+		return OffsetDateTime.ofInstant(instant, ZoneId.of(zoneId));
 	}
 }

@@ -9,9 +9,12 @@ import akka.testkit.javadsl.TestKit;
 import com.google.common.collect.ImmutableList;
 import com.lightbend.lagom.javadsl.api.transport.NotFound;
 import com.scottlogic.weather.owmadapter.api.message.Unauthorized;
+import com.scottlogic.weather.owmadapter.api.message.internal.City;
 import com.scottlogic.weather.owmadapter.api.message.internal.Coordinates;
+import com.scottlogic.weather.owmadapter.api.message.internal.Forecast;
 import com.scottlogic.weather.owmadapter.api.message.internal.Locale;
-import com.scottlogic.weather.owmadapter.api.message.internal.OwmWeatherResponse;
+import com.scottlogic.weather.owmadapter.api.message.internal.OwmCurrentWeatherResponse;
+import com.scottlogic.weather.owmadapter.api.message.internal.OwmForecastWeatherResponse;
 import com.scottlogic.weather.owmadapter.api.message.internal.Temperature;
 import com.scottlogic.weather.owmadapter.api.message.internal.Weather;
 import com.scottlogic.weather.owmadapter.api.message.internal.Wind;
@@ -30,6 +33,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
@@ -70,22 +74,24 @@ class OwmClientTest {
 
 	@Test
 	void getCurrentWeather_200Response_ReturnsWeatherData() {
-		final OwmWeatherResponse expectedResponse = generateOwmWeatherResponse();
+		final OwmCurrentWeatherResponse expectedResponse = generateOwmCurrentWeatherResponse();
 		when(
 				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
 		).thenReturn(
-				httpSuccessResponseWithEntity(expectedResponse)
+				httpSuccessResponseWithEntity(
+						owmCurrentWeatherResponseToEntityString(expectedResponse)
+				)
 		);
 
 		sut = new OwmClient(actorSystem, http, configValid);
-		final OwmWeatherResponse response = sut.getCurrentWeather("anywhere");
+		final OwmCurrentWeatherResponse response = sut.getCurrentWeather("anywhere");
 
 		assertThat(response, is(expectedResponse));
 	}
 
 	@Test
 	void getCurrentWeather_401Response_ThrowsUnauthorized() {
-		final String failureMessage = "whoops apocalypse";
+		final String failureMessage = "Apocalypse Now";
 		when(
 				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
 		).thenReturn(
@@ -97,12 +103,12 @@ class OwmClientTest {
 		final Unauthorized exception = assertThrows(
 				Unauthorized.class, () -> sut.getCurrentWeather("anywhere")
 		);
-		assertThat(exception.getMessage().toLowerCase(), is(failureMessage));
+		assertThat(exception.getMessage(), is(failureMessage));
 	}
 
 	@Test
 	void getCurrentWeather_404Response_ThrowsNotFound() {
-		final String failureMessage = "apocalypse now";
+		final String failureMessage = "Whoops Apocalypse";
 		when(
 				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
 		).thenReturn(
@@ -114,7 +120,58 @@ class OwmClientTest {
 		final NotFound exception = assertThrows(
 				NotFound.class, () -> sut.getCurrentWeather("Shoogly")
 		);
-		assertThat(exception.getMessage().toLowerCase(), containsString(failureMessage));
+		assertThat(exception.getMessage(), is(failureMessage));
+	}
+
+	@Test
+	void getForecastWeather_200Response_ReturnsWeatherData() {
+		final OwmForecastWeatherResponse expectedResponse = generateOwmForecastWeatherResponse();
+		when(
+				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
+		).thenReturn(
+				httpSuccessResponseWithEntity(
+						owmForecastWeatherResponseToEntityString(expectedResponse)
+				)
+		);
+
+		sut = new OwmClient(actorSystem, http, configValid);
+		final OwmForecastWeatherResponse response = sut.getForecastWeather("anywhere");
+
+		assertThat(response, is(expectedResponse));
+	}
+
+	@Test
+	void getForecastWeather_401Response_ThrowsUnauthorized() {
+		final String failureMessage = "Apocalypse, CA";
+		when(
+				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
+		).thenReturn(
+				httpFailureResponseWithStatus(401, failureMessage)
+		);
+
+		sut = new OwmClient(actorSystem, http, configBadApiKey);
+
+		final Unauthorized exception = assertThrows(
+				Unauthorized.class, () -> sut.getForecastWeather("anywhere")
+		);
+		assertThat(exception.getMessage(), is(failureMessage));
+	}
+
+	@Test
+	void getForecastWeather_404Response_ThrowsNotFound() {
+		final String failureMessage = "X-Men: Apocalypse";
+		when(
+				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
+		).thenReturn(
+				httpFailureResponseWithStatus(404, failureMessage)
+		);
+
+		sut = new OwmClient(actorSystem, http, configValid);
+
+		final NotFound exception = assertThrows(
+				NotFound.class, () -> sut.getForecastWeather("Shoogly")
+		);
+		assertThat(exception.getMessage(), is(failureMessage));
 	}
 
 	@Test
@@ -126,9 +183,9 @@ class OwmClientTest {
 		assertThat(exception.getMessage().toLowerCase(), containsString("no configuration setting found for key 'source'"));
 	}
 
-	private OwmWeatherResponse generateOwmWeatherResponse() {
+	private OwmCurrentWeatherResponse generateOwmCurrentWeatherResponse() {
 		final Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-		return OwmWeatherResponse.builder()
+		return OwmCurrentWeatherResponse.builder()
 				.id(12345)
 				.name("anywhere")
 				.coordinates(Coordinates.builder()
@@ -162,50 +219,142 @@ class OwmClientTest {
 				.build();
 	}
 
-	private CompletionStage<HttpResponse> httpSuccessResponseWithEntity(final OwmWeatherResponse responseEntity) {
+	private OwmForecastWeatherResponse generateOwmForecastWeatherResponse() {
+		final Instant firstMeasured = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+
+		final Forecast templateForecast = generateForecast(firstMeasured);
+
+		return OwmForecastWeatherResponse.builder()
+				.city(City.builder()
+						.id(264371)
+						.name("Athens")
+						.countryCode("GR")
+						.coordinates(Coordinates.builder()
+								.longitude(37.98)
+								.latitude(23.73)
+								.build()
+						)
+						.build()
+				)
+				.forecasts(ImmutableList.of(
+						templateForecast,
+						templateForecast.withMeasuredAt(firstMeasured.plus(3, ChronoUnit.HOURS)),
+						templateForecast.withMeasuredAt(firstMeasured.plus(6, ChronoUnit.HOURS))
+				))
+				.build();
+	}
+
+	private Forecast generateForecast(final Instant firstMeasured) {
+		return Forecast.builder()
+				.measuredAt(firstMeasured)
+				.weather(ImmutableList.of(Weather.builder()
+						.id(999)
+						.description("surface of the sun hot")
+						.build())
+				)
+				.temperature(Temperature.builder()
+						.tempMin(new BigDecimal("28.0"))
+						.temp(new BigDecimal("35.2"))
+						.tempMax(new BigDecimal("40.7"))
+						.build()
+				)
+				.wind(Wind.builder()
+						.fromDegrees((short) 180)
+						.speed(new BigDecimal("0.3"))
+						.build()
+				)
+				.build();
+	}
+
+	private CompletionStage<HttpResponse> httpSuccessResponseWithEntity(final String responseEntityAsString) {
 		return CompletableFuture.completedFuture(
 				HttpResponse.create()
 						.withStatus(200)
-						.withEntity(HttpEntities.create(
-								owmWeatherResponseToEntityString(responseEntity)
-						))
+						.withEntity(HttpEntities.create(responseEntityAsString))
 		);
 	}
 
-	private String owmWeatherResponseToEntityString(final OwmWeatherResponse weather) {
+	private String owmCurrentWeatherResponseToEntityString(final OwmCurrentWeatherResponse current) {
 		return "{" +
 				"\"coord\":{" +
-					"\"lon\":" + weather.getCoordinates().getLongitude() +
-					",\"lat\":" + weather.getCoordinates().getLatitude() +
+					"\"lon\":" + current.getCoordinates().getLongitude() +
+					",\"lat\":" + current.getCoordinates().getLatitude() +
 				"}," +
 				"\"weather\":[{" +
-					"\"id\":" + weather.getWeather().get(0).getId() +
-					",\"description\":\"" + weather.getWeather().get(0).getDescription() + "\",\"icon\":\"03d\"" +
+					"\"id\":" + current.getWeather().get(0).getId() +
+					",\"description\":\"" + current.getWeather().get(0).getDescription() + "\",\"icon\":\"03d\"" +
 				"}]," +
 				"\"base\":\"stations\"," +
 				"\"main\":{" +
-					"\"temp\":" + weather.getTemperature().getTemp().toPlainString() +
+					"\"temp\":" + current.getTemperature().getTemp().toPlainString() +
 					",\"pressure\":1011" +
 					",\"humidity\":71" +
-					",\"temp_min\":" + weather.getTemperature().getTempMin().toPlainString() +
-					",\"temp_max\":" + weather.getTemperature().getTempMax().toPlainString() +
+					",\"temp_min\":" + current.getTemperature().getTempMin().toPlainString() +
+					",\"temp_max\":" + current.getTemperature().getTempMax().toPlainString() +
 				"}," +
 				"\"visibility\":10000," +
 				"\"wind\":{" +
-					"\"speed\":" + weather.getWind().getSpeed().toPlainString() +
-					",\"deg\":" + weather.getWind().getFromDegrees() +
+					"\"speed\":" + current.getWind().getSpeed().toPlainString() +
+					",\"deg\":" + current.getWind().getFromDegrees() +
 				"}," +
 				"\"clouds\":{\"all\":40}," +
-				"\"dt\":" + weather.getMeasuredAt().getEpochSecond() +
+				"\"dt\":" + current.getMeasuredAt().getEpochSecond() +
 				",\"sys\":{" +
 					"\"type\":1,\"id\":5122,\"message\":0.0032" +
-					",\"country\":\"" + weather.getLocaleData().getCountryCode() + "\"" +
-					",\"sunrise\":" + weather.getLocaleData().getSunrise().getEpochSecond() +
-					",\"sunset\":" + weather.getLocaleData().getSunset().getEpochSecond() +
+					",\"country\":\"" + current.getLocaleData().getCountryCode() + "\"" +
+					",\"sunrise\":" + current.getLocaleData().getSunrise().getEpochSecond() +
+					",\"sunset\":" + current.getLocaleData().getSunset().getEpochSecond() +
 				"}," +
-				"\"id\":" + weather.getId() +
-				",\"name\":\"" + weather.getName() + "\"," +
+				"\"id\":" + current.getId() +
+				",\"name\":\"" + current.getName() + "\"," +
 				"\"cod\":200" +
+				"}";
+	}
+
+	private String owmForecastWeatherResponseToEntityString(final OwmForecastWeatherResponse forecast) {
+		return "{" +
+				"\"cod\":\"200\"" +
+				",\"message\":0.0001" +
+				",\"cnt\":" + forecast.getForecasts().size() +
+				",\"city\":{" +
+					"\"id\":" + forecast.getCity().getId() +
+					",\"name\":\"" + forecast.getCity().getName() + "\"" +
+					",\"country\":\"" + forecast.getCity().getCountryCode() + "\"" +
+					",\"population\":1000000" +
+					",\"coord\":{" +
+						"\"lat\":" + forecast.getCity().getCoordinates().getLatitude() +
+						",\"lon\":" + forecast.getCity().getCoordinates().getLongitude() +
+					"}" +
+				"}" +
+				",\"list\":[" +
+				forecast.getForecasts().parallelStream()
+						.map(this::forecastToString)
+						.collect(Collectors.joining(",")) +
+				"]" +
+				"}";
+	}
+
+	private String forecastToString(final Forecast forecast) {
+		return "{" +
+				"\"dt\":" + forecast.getMeasuredAt().getEpochSecond() +
+				",\"main\":{" +
+				"\"temp\":" + forecast.getTemperature().getTemp().toPlainString() +
+				",\"temp_min\":" + forecast.getTemperature().getTempMin().toPlainString() +
+				",\"temp_max\":" + forecast.getTemperature().getTempMax().toPlainString() +
+				",\"humidity\":85" +
+				"}" +
+				",\"weather\":[{" +
+				"\"id\":" + forecast.getWeather().get(0).getId() +
+				",\"description\":\"" + forecast.getWeather().get(0).getDescription() + "\",\"icon\":\"03d\"" +
+				"}]" +
+				",\"clouds\":{\"all\":25}" +
+				",\"wind\":{" +
+				"\"speed\":" + forecast.getWind().getSpeed().toPlainString() +
+				",\"deg\":" + forecast.getWind().getFromDegrees() +
+				"}" +
+				",\"rain\":{\"3h\":0.2450}" +
+				",\"sys\":{\"pod\":\"d\"}" +
+				",\"dt_txt\": \"2018-01-01 12:00:00\"" + // value doesn't matter, it's not used
 				"}";
 	}
 

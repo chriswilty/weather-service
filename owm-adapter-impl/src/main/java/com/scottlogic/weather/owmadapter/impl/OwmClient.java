@@ -4,7 +4,7 @@ import akka.actor.ActorSystem;
 import akka.http.javadsl.Http;
 import akka.http.javadsl.model.HttpEntity;
 import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.HttpResponse;
+import akka.http.javadsl.model.ResponseEntity;
 import akka.http.javadsl.model.StatusCode;
 import akka.http.javadsl.model.StatusCodes;
 import akka.http.javadsl.unmarshalling.Unmarshaller;
@@ -19,7 +19,8 @@ import com.lightbend.lagom.javadsl.api.transport.TransportErrorCode;
 import com.lightbend.lagom.javadsl.api.transport.TransportException;
 import com.scottlogic.weather.owmadapter.api.message.Unauthorized;
 import com.scottlogic.weather.owmadapter.api.message.internal.ErrorResponse;
-import com.scottlogic.weather.owmadapter.api.message.internal.OwmWeatherResponse;
+import com.scottlogic.weather.owmadapter.api.message.internal.OwmCurrentWeatherResponse;
+import com.scottlogic.weather.owmadapter.api.message.internal.OwmForecastWeatherResponse;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 @Singleton
 class OwmClient {
 	private static final String CURRENT_WEATHER_SEGMENT = "weather";
+	private static final String FORECAST_WEATHER_SEGMENT = "forecast";
 	private static final int REQUEST_TIMEOUT_SECS = 30;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
@@ -57,6 +59,7 @@ class OwmClient {
 		this.objectMapper = JacksonObjectMapperProvider.get(actorSystem).objectMapper();
 
 		final Config owmConfig = config.getConfig("source.openWeatherMap");
+		// TODO Onboard user with this API key, and store in entity.
 		this.apiKey = owmConfig.getString("apiKey");
 
 		final String url = owmConfig.getString("url");
@@ -69,34 +72,47 @@ class OwmClient {
 		}
 	}
 
-	OwmWeatherResponse getCurrentWeather(final String location) throws TransportException {
+	OwmCurrentWeatherResponse getCurrentWeather(final String location) throws TransportException {
+		return getWeather(
+				currentWeatherUrl(location),
+				OwmCurrentWeatherResponse.class
+		);
+	}
+
+	OwmForecastWeatherResponse getForecastWeather(final String location) throws TransportException {
+		return getWeather(
+				forecastWeatherUrl(location),
+				OwmForecastWeatherResponse.class
+		);
+	}
+
+	<T> T getWeather(final String url, final Class<T> responseClass) throws TransportException {
 		try {
-			return this.http.singleRequest(
-					HttpRequest.create(currentWeatherUrl(location))
-			).thenApply(httpResponse -> {
-				if (httpResponse.status().isSuccess()) {
-					return handleSuccess(httpResponse);
-				}
-				throw transportExceptionFromFailureResponse(httpResponse.status(), httpResponse.entity());
-			}).toCompletableFuture().get(REQUEST_TIMEOUT_SECS, SECONDS);
+			return this.http.singleRequest(HttpRequest.create(url))
+					.thenApply(httpResponse -> {
+						if (httpResponse.status().isSuccess()) {
+							return unmarshallWeatherResponse(httpResponse.entity(), responseClass);
+						}
+						throw transportExceptionFromFailureResponse(httpResponse.status(), httpResponse.entity());
+					})
+					.toCompletableFuture().get(REQUEST_TIMEOUT_SECS, SECONDS);
 		} catch (final ExecutionException e) {
 			final Throwable cause = e.getCause();
 			throw (TransportException.class.isAssignableFrom(cause.getClass()))
 					? (TransportException) e.getCause()
 					: internalServerError(e);
-
 		} catch (final InterruptedException | TimeoutException e) {
 			throw requestTimedOut(e);
 		}
 	}
 
-	private OwmWeatherResponse handleSuccess(HttpResponse httpResponse) throws DeserializationException {
+	private <T> T unmarshallWeatherResponse(final ResponseEntity entity, final Class<T> clazz) throws DeserializationException {
 		try {
 			final String jsonResponse = Unmarshaller.entityToString()
-					.unmarshal(httpResponse.entity(), materializer)
+					.unmarshal(entity, materializer)
 					.toCompletableFuture().get(5, SECONDS);
 
-			return this.objectMapper.readValue(jsonResponse, OwmWeatherResponse.class);
+			return this.objectMapper.readValue(jsonResponse, clazz);
 		} catch (InterruptedException | ExecutionException | TimeoutException e) {
 			throw deserializationException("Failed to unmarshall weather data response entity", e);
 		} catch (IOException e) {
@@ -130,6 +146,11 @@ class OwmClient {
 		}
 	}
 
+	private DeserializationException deserializationException(final String message, final Exception e) {
+		log.error(message, e);
+		return new DeserializationException(message);
+	}
+
 	private TransportException requestTimedOut(final Exception e) {
 		return TransportException.fromCodeAndMessage(
 				TransportErrorCode.fromHttp(StatusCodes.REQUEST_TIMEOUT.intValue()),
@@ -151,21 +172,24 @@ class OwmClient {
 		);
 	}
 
-	private String currentWeatherUrl(final String location) {
+	private String currentWeatherUrl(final String location) throws TransportException {
+		return weatherUrl(CURRENT_WEATHER_SEGMENT, location);
+	}
+
+	private String forecastWeatherUrl(final String location) throws TransportException {
+		return weatherUrl(FORECAST_WEATHER_SEGMENT, location);
+	}
+
+	private String weatherUrl(final String segment, final String location) throws TransportException {
 		try {
 			final String locationEncoded = URLEncoder.encode(location, StandardCharsets.UTF_8.name());
 			return this.baseUrl +
-					CURRENT_WEATHER_SEGMENT +
+					segment +
 					"?units=metric&appid=" + this.apiKey +
 					"&q=" + locationEncoded;
 		} catch (UnsupportedEncodingException e) {
 			log.error("Problem enclding URL for OpenWeatherMap", e);
 			throw internalServerError(e);
 		}
-	}
-
-	private DeserializationException deserializationException(final String message, final Exception e) {
-		log.error(message, e);
-		return new DeserializationException(message);
 	}
 }

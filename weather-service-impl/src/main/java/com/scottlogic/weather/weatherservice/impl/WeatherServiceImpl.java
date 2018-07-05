@@ -7,10 +7,12 @@ import com.google.inject.Inject;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.lightbend.lagom.javadsl.api.transport.BadRequest;
 import com.scottlogic.weather.owmadapter.api.OwmAdapter;
+import com.scottlogic.weather.owmadapter.api.message.WeatherData;
 import com.scottlogic.weather.weatherservice.api.WeatherService;
 import com.scottlogic.weather.weatherservice.api.message.AddLocationRequest;
+import com.scottlogic.weather.weatherservice.api.message.CurrentWeatherResponse;
 import com.scottlogic.weather.weatherservice.api.message.SetEmitFrequencyRequest;
-import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
+import com.scottlogic.weather.weatherservice.api.message.WeatherForecastResponse;
 import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.AddLocation;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.ChangeEmitFrequency;
@@ -21,7 +23,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Implementation of the WeatherService.
@@ -50,20 +54,47 @@ public class WeatherServiceImpl implements WeatherService {
 	}
 
 	@Override
-	public ServiceCall<NotUsed, WeatherDataResponse> currentWeather(final String location) {
+	public ServiceCall<NotUsed, CurrentWeatherResponse> currentWeather(final String location) {
 		return request -> {
 			log.info("Received request for current weather in [{}]", location);
 			return this.owmAdapterService.getCurrentWeather(location).invoke()
-					.thenApply(MessageUtils::transformWeatherData)
-					.thenApply(this::logResponse);
+					.thenApply(MessageUtils::weatherDataToCurrentWeatherResponse)
+					.thenApply(response -> {
+						log.info("Sending current weather for [{}]", response.getLocation());
+						return response;
+					});
 		};
 	}
 
 	@Override
-	public ServiceCall<NotUsed, Source<WeatherDataResponse, ?>> currentWeatherStream() {
+	public ServiceCall<NotUsed, WeatherForecastResponse> weatherForecast(String location) {
+		return request -> {
+			log.info("Received request for weather forecast for [{}]", location);
+
+			final CompletionStage<WeatherData> current = this.owmAdapterService.getCurrentWeather(location).invoke();
+			final CompletionStage<List<WeatherData>> forecast = this.owmAdapterService.getForecastWeather(location).invoke();
+
+			return current.thenCombine(forecast, MessageUtils::weatherDataToWeatherForecastResponse)
+					.thenApply(response -> {
+						log.info("Sending weather forecast for [{}]", response.getLocation());
+						return response;
+					});
+		};
+	}
+
+	@Override
+	public ServiceCall<NotUsed, Source<CurrentWeatherResponse, ?>> currentWeatherStream() {
 		return request -> {
 			log.info("Received request for stream of current weather");
 			return CompletableFuture.completedFuture(this.streamGeneratorFactory.get(entityId).getSourceOfCurrentWeatherData());
+		};
+	}
+
+	@Override
+	public ServiceCall<NotUsed, Source<WeatherForecastResponse, ?>> weatherForecastStream() {
+		return request -> {
+			log.info("Received request for stream of forecast weather");
+			return CompletableFuture.completedFuture(this.streamGeneratorFactory.get(entityId).getSourceOfWeatherForecastData());
 		};
 	}
 

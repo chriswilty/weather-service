@@ -7,8 +7,9 @@ import com.lightbend.lagom.javadsl.api.Descriptor;
 import com.lightbend.lagom.javadsl.api.Service;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.scottlogic.weather.weatherservice.api.message.AddLocationRequest;
+import com.scottlogic.weather.weatherservice.api.message.CurrentWeatherResponse;
 import com.scottlogic.weather.weatherservice.api.message.SetEmitFrequencyRequest;
-import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
+import com.scottlogic.weather.weatherservice.api.message.WeatherForecastResponse;
 import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
 
 import static com.lightbend.lagom.javadsl.api.Service.named;
@@ -25,8 +26,10 @@ import static com.lightbend.lagom.javadsl.api.transport.Method.PUT;
  */
 public interface WeatherService extends Service {
 
-	ServiceCall<NotUsed, WeatherDataResponse> currentWeather(String location);
-	ServiceCall<NotUsed, Source<WeatherDataResponse, ?>> currentWeatherStream();
+	ServiceCall<NotUsed, CurrentWeatherResponse> currentWeather(String location);
+	ServiceCall<NotUsed, WeatherForecastResponse> weatherForecast(String location);
+	ServiceCall<NotUsed, Source<CurrentWeatherResponse, ?>> currentWeatherStream();
+	ServiceCall<NotUsed, Source<WeatherForecastResponse, ?>> weatherForecastStream();
 	ServiceCall<NotUsed, WeatherStreamParameters> weatherStreamParameters();
 	ServiceCall<SetEmitFrequencyRequest, Done> setEmitFrequency();
 	ServiceCall<AddLocationRequest, Done> addLocation();
@@ -37,7 +40,9 @@ public interface WeatherService extends Service {
 		return named("weather-service")
 				.withCalls(
 						restCall(GET, "/api/weather-service/current/:location", this::currentWeather),
+						restCall(GET, "/api/weather-service/forecast/:location", this::weatherForecast),
 						restCall(GET, "/api/weather-service/streaming/current", this::currentWeatherStream),
+						restCall(GET, "/api/weather-service/streaming/forecast", this::weatherForecastStream),
 						restCall(GET, "/api/weather-service/streaming/parameters", this::weatherStreamParameters),
 						restCall(PUT, "/api/weather-service/streaming/parameters/emit-frequency", this::setEmitFrequency),
 						restCall(POST, "/api/weather-service/streaming/parameters/locations", this::addLocation),

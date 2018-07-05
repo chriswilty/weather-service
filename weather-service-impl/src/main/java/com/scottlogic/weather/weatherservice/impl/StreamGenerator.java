@@ -3,6 +3,7 @@ package com.scottlogic.weather.weatherservice.impl;
 import akka.NotUsed;
 import akka.actor.ActorRef;
 import akka.japi.function.Creator;
+import akka.japi.function.Function;
 import akka.japi.function.Function2;
 import akka.stream.Graph;
 import akka.stream.KillSwitch;
@@ -14,8 +15,9 @@ import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import com.google.inject.Inject;
 import com.scottlogic.weather.owmadapter.api.OwmAdapter;
+import com.scottlogic.weather.weatherservice.api.message.CurrentWeatherResponse;
 import com.scottlogic.weather.weatherservice.api.message.StreamParametersUpdated;
-import com.scottlogic.weather.weatherservice.api.message.WeatherDataResponse;
+import com.scottlogic.weather.weatherservice.api.message.WeatherForecastResponse;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.GetWeatherStreamParameters;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherEntity;
 import org.slf4j.Logger;
@@ -40,6 +42,9 @@ public class StreamGenerator {
 	private final Materializer materializer;
 	private final String entityId;
 
+	private final Function<String, CompletionStage<CurrentWeatherResponse>> getCurrentWeather;
+	private final Function<String, CompletionStage<WeatherForecastResponse>> getWeatherForecast;
+
 	private KillSwitch sourceKillSwitch;
 
 	@Inject
@@ -55,6 +60,14 @@ public class StreamGenerator {
 		this.pubSubRegistryFacade = pubSubRegistryFacade;
 		this.materializer = materializer;
 		this.entityId = entityId;
+
+		this.getCurrentWeather = location -> this.owmAdapter.getCurrentWeather(location).invoke()
+				.thenApply(MessageUtils::weatherDataToCurrentWeatherResponse);
+		this.getWeatherForecast = location -> this.owmAdapter.getCurrentWeather(location).invoke()
+				.thenCombine(
+						this.owmAdapter.getForecastWeather(location).invoke(),
+						MessageUtils::weatherDataToWeatherForecastResponse
+				);
 	}
 
 	/**
@@ -62,25 +75,29 @@ public class StreamGenerator {
 	 *   Generates a source of weather data that will react to stream parameter changes in realtime.
 	 * </p>
 	 * <p>
-	 *   The concept is to create a "source" of weather data which can be reconstructed on-the-fly,
-	 *   and a "sink" which will be a stream passed back to (and terminated by) the client. Incoming
-	 *   messages from the source will be pushed into the sink on demand; as our source and sink are
-	 *   independent, we can reconstruct our source at any stage without affecting the open stream
-	 *   to the client.
+	 *   The concept is to create a "source" of weather data which can be reconstructed on-demand,
+	 *   and a "sink" which will be a stream passed back to (and eventually terminated by) the
+	 *   client. Incoming messages from the source will be pushed into the sink as they arrive;
+	 *   because our source and sink are independent, we can reconstruct our source at any stage
+	 *   without affecting the open stream to the client.
 	 * </p>
 	 * <ul>
 	 * <li>
-	 *   The source is created using {@link Source#actorRef(int, OverflowStrategy) Source.actorRef}.
-	 *   Messages can be pushed to the actor, which in turn will push them into the materialized
-	 *   stream. We need to use mapMaterializedValue to get hold of a reference to the ActorRef, so
-	 *   that we can push weather data responses as they come back from the Adapter service.
+	 *   The source returned to the caller (client) is created using
+	 *   {@link Source#actorRef(int, OverflowStrategy) Source.actorRef}. Messages can be pushed to
+	 *   the actor, which in turn pushes them into the materialized stream. We need to use
+	 *   mapMaterializedValue to get hold of a reference to the ActorRef, so that we can push
+	 *   weather data responses as they come back from the Adapter service. Note that we could just
+	 *   as easily use {@link Source#queue(int, OverflowStrategy) Source.queue}, if we expected our
+	 *   service to be consumed by another service and wanted to be able to react to backpressure.
 	 * </li>
 	 * <li>
 	 *   For the weather data source, we use {@link Source#cycle(Creator) Source.cycle} to
 	 *   continuously loop through the configured locations, mapping each to a call to the Adapter
-	 *   service to fetch weather data, together with
-	 *   {@link Source#throttle(int, Duration) Source.throttle} to regulate the output of weather
-	 *   data elements to the configured frequency.
+	 *   service to fetch weather data, using a couple of
+	 *   {@link Source#throttle(int, Duration) Source.throttle}s to regulate the frequency of
+	 *   requests to the Adapter (and therefore to OpenWeatherMap) and emission of weather data to
+	 *   the client.
 	 * </li>
 	 * <li>
 	 *   The source is constructed first time by asking the WeatherEntity for the current stream
@@ -100,28 +117,23 @@ public class StreamGenerator {
 	 *
 	 * @return a {@link Source} of weather data
 	 */
-	public Source<WeatherDataResponse, ?> getSourceOfCurrentWeatherData() {
-		return Source.<WeatherDataResponse>actorRef(3, OverflowStrategy.dropHead())
+	public Source<CurrentWeatherResponse, ?> getSourceOfCurrentWeatherData() {
+		return this.getSourceOfWeatherData(this.getCurrentWeather);
+	}
+
+	public Source<WeatherForecastResponse, ?> getSourceOfWeatherForecastData() {
+		return this.getSourceOfWeatherData(this.getWeatherForecast);
+	}
+
+	private <T> Source<T, ?> getSourceOfWeatherData(final Function<String, CompletionStage<T>> getWeatherFunction) {
+		return Source.<T>actorRef(3, OverflowStrategy.dropHead())
 				.mapMaterializedValue(actorRef -> {
-					// Set up the weather data stream
+					// Set up the (responsive) weather data stream.
 					generateCancellableStreamOfWeatherData(
-							sourceOfCurrentWeatherData(entityId),
+							sourceOfWeatherData(this.entityId, getWeatherFunction),
 							actorRef
 					);
-					// Subscribe to stream parameter changes.
-					this.pubSubRegistryFacade
-							.subscribe(StreamParametersUpdated.class, Optional.of(entityId))
-							.runForeach(
-									update -> {
-										log.info("Received notification of stream parameter changes, rebuilding source...");
-										terminateWeatherSource();
-										generateCancellableStreamOfWeatherData(
-												sourceOfCurrentWeatherData(update.getEmitFrequencySecs(), update.getLocations()),
-												actorRef
-										);
-									},
-									materializer
-							);
+					subscribeToStreamParameterUpdates(getWeatherFunction, actorRef);
 					return actorRef;
 				})
 				.watchTermination((source, future) -> {
@@ -135,8 +147,31 @@ public class StreamGenerator {
 				});
 	}
 
-	private void generateCancellableStreamOfWeatherData(
-			final Source<WeatherDataResponse, NotUsed> source,
+	private <T> void subscribeToStreamParameterUpdates(
+			final Function<String, CompletionStage<T>> getWeatherFunction,
+			final ActorRef actorRef
+	) {
+		this.pubSubRegistryFacade
+				.subscribe(StreamParametersUpdated.class, Optional.of(this.entityId))
+				.runForeach(
+						update -> {
+							log.info("Received notification of stream parameter changes, rebuilding source...");
+							terminateWeatherSource();
+							generateCancellableStreamOfWeatherData(
+									sourceOfWeatherData(
+											update.getLocations(),
+											update.getEmitFrequencySecs(),
+											getWeatherFunction
+									),
+									actorRef
+							);
+						},
+						materializer
+				);
+	}
+
+	private <T> void generateCancellableStreamOfWeatherData(
+			final Source<T, NotUsed> source,
 			final ActorRef actorRef
 	) {
 		this.sourceKillSwitch = source.viaMat(KillSwitches.single(), Keep.right())
@@ -144,31 +179,37 @@ public class StreamGenerator {
 				.run(this.materializer);
 	}
 
-	private Sink<WeatherDataResponse, ?> sinkIntoActorRef(final ActorRef actorRef) {
+	private <T> Sink<T, ?> sinkIntoActorRef(final ActorRef actorRef) {
 		return Sink.foreach(weather -> actorRef.tell(weather, ActorRef.noSender()));
 	}
 
-	private Source<WeatherDataResponse, NotUsed> sourceOfCurrentWeatherData(final String entityId)
-			throws InterruptedException, ExecutionException, TimeoutException {
+	private <T> Source<T, NotUsed> sourceOfWeatherData(
+			final String entityId,
+			final Function<String, CompletionStage<T>> getWeatherFunction
+	) throws InterruptedException, ExecutionException, TimeoutException {
 		return this.persistentEntityRegistryFacade.sendCommandToPersistentEntity(
 				WeatherEntity.class,
 				entityId,
 				new GetWeatherStreamParameters()
-		).thenApply(streamParameters ->
-				sourceOfCurrentWeatherData(streamParameters.getEmitFrequencySeconds(), streamParameters.getLocations())
+		).thenApply(
+				streamParameters -> sourceOfWeatherData(
+						streamParameters.getLocations(),
+						streamParameters.getEmitFrequencySeconds(),
+						getWeatherFunction
+				)
 		).toCompletableFuture().get(5, TimeUnit.SECONDS);
 	}
 
-	private Source<WeatherDataResponse, NotUsed> sourceOfCurrentWeatherData(final int frequency, final List<String> locations) {
+	private <T> Source<T, NotUsed> sourceOfWeatherData(
+			final List<String> locations,
+			final int frequency,
+			final Function<String, CompletionStage<T>> getWeatherFunction
+	) {
+		// OWM free tier only allows 60 API calls per minute, so throttle to one per second.
 		return Source.cycle(locations::iterator)
-				.mapAsync(3, this::getCurrentWeatherForLocation)
+				.throttle(1, Duration.of(1, ChronoUnit.SECONDS))
+				.mapAsync(3, getWeatherFunction)
 				.throttle(1, Duration.of(frequency, ChronoUnit.SECONDS));
-	}
-
-	private CompletionStage<WeatherDataResponse> getCurrentWeatherForLocation(final String location) {
-		return this.owmAdapter
-				.getCurrentWeather(location).invoke()
-				.thenApply(MessageUtils::transformWeatherData);
 	}
 
 	private void terminateWeatherSource() {

@@ -1,19 +1,16 @@
-package com.scottlogic.weather.owmadapter.api.message;
+package com.scottlogic.weather.weatherservice.api.message;
 
-import com.lightbend.lagom.serialization.Jsonable;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.NonFinal;
-import lombok.experimental.Wither;
 
 import java.time.OffsetDateTime;
 
 @Value
-@Wither
-@Builder(toBuilder = true)
-public class WeatherData implements Jsonable {
-	int id;
-	String location;
+@Builder
+@JsonInclude(value = JsonInclude.Include.NON_NULL)
+public class WeatherSnapshot {
 	OffsetDateTime measured;
 	Weather weather;
 	Temperature temperature;
