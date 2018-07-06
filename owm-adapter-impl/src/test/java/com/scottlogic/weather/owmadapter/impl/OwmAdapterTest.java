@@ -85,7 +85,7 @@ class OwmAdapterTest {
 
 		when(owmClient.getForecastWeather(location)).thenReturn(owmResponse);
 
-		final List<WeatherData> response = sut.getForecastWeather(location).invoke()
+		final List<WeatherData> response = sut.getWeatherForecast(location).invoke()
 				.toCompletableFuture().get(5, SECONDS);
 
 		assertThat(response, is(expectedResult));
@@ -99,7 +99,7 @@ class OwmAdapterTest {
 		when(owmClient.getForecastWeather(location)).thenThrow(expectedException);
 
 		final TransportException result = assertThrows(TransportException.class, () ->
-				sut.getForecastWeather(location).invoke()
+				sut.getWeatherForecast(location).invoke()
 						.toCompletableFuture().get(5, SECONDS)
 		);
 

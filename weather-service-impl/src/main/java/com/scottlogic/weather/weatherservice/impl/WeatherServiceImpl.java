@@ -72,7 +72,7 @@ public class WeatherServiceImpl implements WeatherService {
 			log.info("Received request for weather forecast for [{}]", location);
 
 			final CompletionStage<WeatherData> current = this.owmAdapterService.getCurrentWeather(location).invoke();
-			final CompletionStage<List<WeatherData>> forecast = this.owmAdapterService.getForecastWeather(location).invoke();
+			final CompletionStage<List<WeatherData>> forecast = this.owmAdapterService.getWeatherForecast(location).invoke();
 
 			return current.thenCombine(forecast, MessageUtils::weatherDataToWeatherForecastResponse)
 					.thenApply(response -> {

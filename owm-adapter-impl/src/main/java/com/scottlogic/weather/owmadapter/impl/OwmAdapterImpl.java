@@ -41,21 +41,21 @@ public class OwmAdapterImpl implements OwmAdapter {
 					this.owmClient.getCurrentWeather(location)
 			);
 
-			log.info("Sending current weather data response for [{}]", response.getLocation());
+			log.info("Sending current weather response for [{}]", response.getLocation());
 			return CompletableFuture.completedFuture(response);
 		};
 	}
 
 	@Override
-	public ServiceCall<NotUsed, List<WeatherData>> getForecastWeather(String location) {
+	public ServiceCall<NotUsed, List<WeatherData>> getWeatherForecast(String location) {
 		return request -> {
-			log.info("Received request for forecast weather in [{}]", location);
+			log.info("Received request for weather forecast for [{}]", location);
 
 			final List<WeatherData> response = this.transformOwmForecastWeatherData(
 					this.owmClient.getForecastWeather(location)
 			);
 
-			log.info("Sending forecast weather data response for [{}]", response.get(0).getLocation());
+			log.info("Sending weather forecast response for [{}]", response.get(0).getLocation());
 			return CompletableFuture.completedFuture(response);
 		};
 	}

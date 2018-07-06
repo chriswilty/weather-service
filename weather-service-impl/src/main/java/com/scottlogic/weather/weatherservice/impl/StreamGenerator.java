@@ -65,7 +65,7 @@ public class StreamGenerator {
 				.thenApply(MessageUtils::weatherDataToCurrentWeatherResponse);
 		this.getWeatherForecast = location -> this.owmAdapter.getCurrentWeather(location).invoke()
 				.thenCombine(
-						this.owmAdapter.getForecastWeather(location).invoke(),
+						this.owmAdapter.getWeatherForecast(location).invoke(),
 						MessageUtils::weatherDataToWeatherForecastResponse
 				);
 	}

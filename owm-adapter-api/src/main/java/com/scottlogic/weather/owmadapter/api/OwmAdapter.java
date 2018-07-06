@@ -20,14 +20,14 @@ import static com.lightbend.lagom.javadsl.api.transport.Method.GET;
 public interface OwmAdapter extends Service {
 
 	ServiceCall<NotUsed, WeatherData> getCurrentWeather(String location);
-	ServiceCall<NotUsed, List<WeatherData>> getForecastWeather(String location);
+	ServiceCall<NotUsed, List<WeatherData>> getWeatherForecast(String location);
 
 	@Override
 	default Descriptor descriptor() {
 		return named("owm-adapter")
 				.withCalls(
 						restCall(GET, "/api/owm-adapter/current/:location", this::getCurrentWeather),
-						restCall(GET, "/api/owm-adapter/forecast/:location", this::getForecastWeather)
+						restCall(GET, "/api/owm-adapter/forecast/:location", this::getWeatherForecast)
 				)
 				.withAutoAcl(true);
 	}

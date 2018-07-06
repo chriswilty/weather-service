@@ -48,7 +48,7 @@ public class OwmAdapterStub implements OwmAdapter {
 	}
 
 	@Override
-	public ServiceCall<NotUsed, List<WeatherData>> getForecastWeather(final String location) {
+	public ServiceCall<NotUsed, List<WeatherData>> getWeatherForecast(final String location) {
 		return request -> {
 			switch (location) {
 				case LOCATION_401:
