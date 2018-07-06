@@ -6,6 +6,6 @@ import lombok.Value;
 @Value
 @Builder
 public class Weather {
-	private final int id;
-	private final String description;
+	int id;
+	String description;
 }

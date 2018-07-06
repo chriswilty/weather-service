@@ -12,11 +12,10 @@ import static com.google.common.base.Preconditions.checkState;
 @Value
 @Builder
 public class Wind {
-
 	@JsonSerialize(using = BigDecimalToStringSerializer.class)
-	private final BigDecimal speed;
+	BigDecimal speed;
 
-	private final short fromDegrees;
+	short fromDegrees;
 
 	public Wind(final BigDecimal speed, final short fromDegrees) {
 		// Yes, OWM sometimes sends 360 degrees:

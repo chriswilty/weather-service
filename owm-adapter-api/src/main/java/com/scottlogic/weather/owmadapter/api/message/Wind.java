@@ -10,9 +10,8 @@ import static com.google.common.base.Preconditions.checkState;
 @Value
 @Builder
 public class Wind {
-
-	private final BigDecimal speed;
-	private final short fromDegrees;
+	BigDecimal speed;
+	short fromDegrees;
 
 	public Wind(final BigDecimal speed, final short fromDegrees) {
 		// Yes, OWM sometimes sends 360 degrees:

@@ -7,10 +7,9 @@ import lombok.Value;
 @Value
 @Builder
 public class Coordinates {
-
 	@JsonProperty("lon")
-	private final double longitude;
+	double longitude;
 
 	@JsonProperty("lat")
-	private final double latitude;
+	double latitude;
 }

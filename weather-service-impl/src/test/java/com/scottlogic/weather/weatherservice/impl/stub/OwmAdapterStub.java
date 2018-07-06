@@ -13,7 +13,12 @@ import com.scottlogic.weather.owmadapter.api.message.Wind;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.time.temporal.ChronoUnit.HOURS;
 
@@ -23,6 +28,8 @@ import static java.time.temporal.ChronoUnit.HOURS;
 public class OwmAdapterStub implements OwmAdapter {
 	public static final String LOCATION_401 = "Anywhere,KP";
 	public static final String LOCATION_404 = "Trumpsbrain,US";
+
+	private static Random random = new Random();
 
 	@Override
 	public ServiceCall<NotUsed, WeatherData> getCurrentWeather(final String location) {
@@ -35,17 +42,49 @@ public class OwmAdapterStub implements OwmAdapter {
 				case LOCATION_404:
 					throw new NotFound("no sir");
 				default:
-					return CompletableFuture.completedFuture(generateWeatherData(location));
+					return CompletableFuture.completedFuture(generateCurrentWeatherData(location));
 			}
 		};
 	}
 
-	private WeatherData generateWeatherData(final String location) {
+	@Override
+	public ServiceCall<NotUsed, List<WeatherData>> getWeatherForecast(final String location) {
+		return request -> {
+			switch (location) {
+				case LOCATION_401:
+					throw new Unauthorized("denied");
+				case LOCATION_404:
+					throw new NotFound("no sir");
+				default:
+					return CompletableFuture.completedFuture(generateWeatherForecastData(location));
+			}
+		};
+	}
+
+	private List<WeatherData> generateWeatherForecastData(final String location) {
+		final OffsetDateTime firstReading = OffsetDateTime.now().truncatedTo(ChronoUnit.HOURS).plusHours(1);
+
+		return IntStream.range(0, 40)
+				.mapToObj(i ->
+						generateCurrentWeatherData(location).toBuilder()
+								.sun(null)
+								.measured(firstReading.plusHours(i * 3))
+								.build()
+				)
+				.collect(Collectors.toList());
+	}
+
+	private WeatherData generateCurrentWeatherData(final String location) {
 		final OffsetDateTime now = OffsetDateTime.now();
+		final short windDirection = (short) random.nextInt(360);
+		final BigDecimal windSpeed = BigDecimal.valueOf(random.nextInt(400))
+				.setScale(1)
+				.divide(BigDecimal.TEN);
+
 		return WeatherData.builder()
 				.id(1234567)
-				.name(location)
-				.measured(now)
+				.location(location)
+				.measured(now.truncatedTo(ChronoUnit.HOURS))
 				.weather(Weather.builder()
 						.id(101)
 						.description("crappy pissy rain")
@@ -58,8 +97,8 @@ public class OwmAdapterStub implements OwmAdapter {
 						.build()
 				)
 				.wind(Wind.builder()
-						.fromDegrees((short) 0)
-						.speed(new BigDecimal("34.5"))
+						.fromDegrees(windDirection)
+						.speed(windSpeed)
 						.build()
 				)
 				.sun(Sun.builder()

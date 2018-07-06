@@ -4,5 +4,5 @@ import lombok.Value;
 
 @Value
 public class AddLocationRequest {
-	private final String location;
+	String location;
 }

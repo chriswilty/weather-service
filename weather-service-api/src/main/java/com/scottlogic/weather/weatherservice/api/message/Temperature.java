@@ -10,14 +10,12 @@ import java.math.BigDecimal;
 @Value
 @Builder
 public class Temperature {
+	@JsonSerialize(using = BigDecimalToStringSerializer.class)
+	BigDecimal current;
 
 	@JsonSerialize(using = BigDecimalToStringSerializer.class)
-	private final BigDecimal current;
+	BigDecimal minimum;
 
 	@JsonSerialize(using = BigDecimalToStringSerializer.class)
-	private final BigDecimal minimum;
-
-	@JsonSerialize(using = BigDecimalToStringSerializer.class)
-	private final BigDecimal maximum;
-	
+	BigDecimal maximum;
 }

@@ -4,18 +4,23 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
+import lombok.experimental.Wither;
 
 import java.time.Instant;
+import java.util.List;
 
 @Value
 @Builder
-public class Locale {
-	@JsonProperty("country")
-	String countryCode;
-
+@Wither
+public class Forecast {
+	@JsonProperty("dt")
 	@JsonFormat(shape=JsonFormat.Shape.NUMBER, pattern="s")
-	Instant sunrise;
+	Instant measuredAt;
 
-	@JsonFormat(shape=JsonFormat.Shape.NUMBER, pattern="s")
-	Instant sunset;
+	List<Weather> weather;
+
+	@JsonProperty("main")
+	Temperature temperature;
+
+	Wind wind;
 }

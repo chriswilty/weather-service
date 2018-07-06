@@ -4,13 +4,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
-import java.math.BigDecimal;
-
 @Value
 @Builder
-public class Wind {
-	BigDecimal speed;
+public class City {
+	int id;
+	String name;
 
-	@JsonProperty("deg")
-	short fromDegrees;
+	@JsonProperty("coord")
+	Coordinates coordinates;
+
+	@JsonProperty("country")
+	String countryCode;
 }
