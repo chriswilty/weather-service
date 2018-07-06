@@ -41,7 +41,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 @Singleton
 class OwmClient {
 	private static final String CURRENT_WEATHER_SEGMENT = "weather";
-	private static final String FORECAST_WEATHER_SEGMENT = "forecast";
+	private static final String WEATHER_FORECAST_SEGMENT = "forecast";
 	private static final int REQUEST_TIMEOUT_SECS = 30;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
@@ -81,7 +81,7 @@ class OwmClient {
 
 	OwmWeatherForecastResponse getWeatherForecast(final String location) throws TransportException {
 		return getWeather(
-				forecastWeatherUrl(location),
+				weatherForecastUrl(location),
 				OwmWeatherForecastResponse.class
 		);
 	}
@@ -176,8 +176,8 @@ class OwmClient {
 		return weatherUrl(CURRENT_WEATHER_SEGMENT, location);
 	}
 
-	private String forecastWeatherUrl(final String location) throws TransportException {
-		return weatherUrl(FORECAST_WEATHER_SEGMENT, location);
+	private String weatherForecastUrl(final String location) throws TransportException {
+		return weatherUrl(WEATHER_FORECAST_SEGMENT, location);
 	}
 
 	private String weatherUrl(final String segment, final String location) throws TransportException {
@@ -188,7 +188,7 @@ class OwmClient {
 					"?units=metric&appid=" + this.apiKey +
 					"&q=" + locationEncoded;
 		} catch (UnsupportedEncodingException e) {
-			log.error("Problem enclding URL for OpenWeatherMap", e);
+			log.error("Problem encoding URL for OpenWeatherMap", e);
 			throw internalServerError(e);
 		}
 	}
