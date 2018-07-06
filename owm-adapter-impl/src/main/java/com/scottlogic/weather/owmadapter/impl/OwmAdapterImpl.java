@@ -11,7 +11,7 @@ import com.scottlogic.weather.owmadapter.api.message.WeatherData;
 import com.scottlogic.weather.owmadapter.api.message.Wind;
 import com.scottlogic.weather.owmadapter.api.message.internal.City;
 import com.scottlogic.weather.owmadapter.api.message.internal.OwmCurrentWeatherResponse;
-import com.scottlogic.weather.owmadapter.api.message.internal.OwmForecastWeatherResponse;
+import com.scottlogic.weather.owmadapter.api.message.internal.OwmWeatherForecastResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +83,7 @@ public class OwmAdapterImpl implements OwmAdapter {
 				.build();
 	}
 
-	private List<WeatherData> transformOwmForecastWeatherData(final OwmForecastWeatherResponse owmResponse) {
+	private List<WeatherData> transformOwmForecastWeatherData(final OwmWeatherForecastResponse owmResponse) {
 		final City city = owmResponse.getCity();
 		final int id = city.getId();
 		final String location = city.getName() + ", " + city.getCountryCode();

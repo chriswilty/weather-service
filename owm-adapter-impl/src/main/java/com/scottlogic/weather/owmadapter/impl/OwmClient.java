@@ -20,7 +20,7 @@ import com.lightbend.lagom.javadsl.api.transport.TransportException;
 import com.scottlogic.weather.owmadapter.api.message.Unauthorized;
 import com.scottlogic.weather.owmadapter.api.message.internal.ErrorResponse;
 import com.scottlogic.weather.owmadapter.api.message.internal.OwmCurrentWeatherResponse;
-import com.scottlogic.weather.owmadapter.api.message.internal.OwmForecastWeatherResponse;
+import com.scottlogic.weather.owmadapter.api.message.internal.OwmWeatherForecastResponse;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,10 +79,10 @@ class OwmClient {
 		);
 	}
 
-	OwmForecastWeatherResponse getForecastWeather(final String location) throws TransportException {
+	OwmWeatherForecastResponse getForecastWeather(final String location) throws TransportException {
 		return getWeather(
 				forecastWeatherUrl(location),
-				OwmForecastWeatherResponse.class
+				OwmWeatherForecastResponse.class
 		);
 	}
 

@@ -11,7 +11,7 @@ import com.scottlogic.weather.owmadapter.api.message.internal.Coordinates;
 import com.scottlogic.weather.owmadapter.api.message.internal.Forecast;
 import com.scottlogic.weather.owmadapter.api.message.internal.Locale;
 import com.scottlogic.weather.owmadapter.api.message.internal.OwmCurrentWeatherResponse;
-import com.scottlogic.weather.owmadapter.api.message.internal.OwmForecastWeatherResponse;
+import com.scottlogic.weather.owmadapter.api.message.internal.OwmWeatherForecastResponse;
 import com.scottlogic.weather.owmadapter.api.message.internal.Temperature;
 import com.scottlogic.weather.owmadapter.api.message.internal.Weather;
 import com.scottlogic.weather.owmadapter.api.message.internal.Wind;
@@ -80,7 +80,7 @@ class OwmAdapterTest {
 	@Test
 	void getForecastWeather_Success_RespondsWithListOfWeatherData() throws Exception {
 		final String location = "Anywhere";
-		final OwmForecastWeatherResponse owmResponse = generateOwmForecastWeatherResponse();
+		final OwmWeatherForecastResponse owmResponse = generateOwmForecastWeatherResponse();
 		final List<WeatherData> expectedResult = generateWeatherDataFrom(owmResponse);
 
 		when(owmClient.getForecastWeather(location)).thenReturn(owmResponse);
@@ -127,7 +127,7 @@ class OwmAdapterTest {
 				.build();
 	}
 
-	private List<WeatherData> generateWeatherDataFrom(final OwmForecastWeatherResponse owmResponse) {
+	private List<WeatherData> generateWeatherDataFrom(final OwmWeatherForecastResponse owmResponse) {
 		final City city = owmResponse.getCity();
 		final int id = city.getId();
 		final String name = city.getName() + ", " + city.getCountryCode();
@@ -189,13 +189,13 @@ class OwmAdapterTest {
 				.build();
 	}
 
-	private OwmForecastWeatherResponse generateOwmForecastWeatherResponse() {
+	private OwmWeatherForecastResponse generateOwmForecastWeatherResponse() {
 		final Instant timeNow = Instant.parse("2018-06-21T13:00:00Z")
 				.minus(3, HOURS); // Helsinki is 3 hours ahead of UTC at the above time.
 		final Instant firstMeasured = timeNow.truncatedTo(ChronoUnit.HOURS);
 		final Forecast templateForecast = generateForecast(firstMeasured);
 
-		return OwmForecastWeatherResponse.builder()
+		return OwmWeatherForecastResponse.builder()
 				.city(City.builder()
 						.id(12345)
 						.name("Helsinki")

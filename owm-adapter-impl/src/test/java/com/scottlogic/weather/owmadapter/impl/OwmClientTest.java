@@ -14,7 +14,7 @@ import com.scottlogic.weather.owmadapter.api.message.internal.Coordinates;
 import com.scottlogic.weather.owmadapter.api.message.internal.Forecast;
 import com.scottlogic.weather.owmadapter.api.message.internal.Locale;
 import com.scottlogic.weather.owmadapter.api.message.internal.OwmCurrentWeatherResponse;
-import com.scottlogic.weather.owmadapter.api.message.internal.OwmForecastWeatherResponse;
+import com.scottlogic.weather.owmadapter.api.message.internal.OwmWeatherForecastResponse;
 import com.scottlogic.weather.owmadapter.api.message.internal.Temperature;
 import com.scottlogic.weather.owmadapter.api.message.internal.Weather;
 import com.scottlogic.weather.owmadapter.api.message.internal.Wind;
@@ -125,7 +125,7 @@ class OwmClientTest {
 
 	@Test
 	void getForecastWeather_200Response_ReturnsWeatherData() {
-		final OwmForecastWeatherResponse expectedResponse = generateOwmForecastWeatherResponse();
+		final OwmWeatherForecastResponse expectedResponse = generateOwmForecastWeatherResponse();
 		when(
 				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
 		).thenReturn(
@@ -135,7 +135,7 @@ class OwmClientTest {
 		);
 
 		sut = new OwmClient(actorSystem, http, configValid);
-		final OwmForecastWeatherResponse response = sut.getForecastWeather("anywhere");
+		final OwmWeatherForecastResponse response = sut.getForecastWeather("anywhere");
 
 		assertThat(response, is(expectedResponse));
 	}
@@ -219,12 +219,12 @@ class OwmClientTest {
 				.build();
 	}
 
-	private OwmForecastWeatherResponse generateOwmForecastWeatherResponse() {
+	private OwmWeatherForecastResponse generateOwmForecastWeatherResponse() {
 		final Instant firstMeasured = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
 		final Forecast templateForecast = generateForecast(firstMeasured);
 
-		return OwmForecastWeatherResponse.builder()
+		return OwmWeatherForecastResponse.builder()
 				.city(City.builder()
 						.id(264371)
 						.name("Athens")
@@ -311,7 +311,7 @@ class OwmClientTest {
 				"}";
 	}
 
-	private String owmForecastWeatherResponseToEntityString(final OwmForecastWeatherResponse forecast) {
+	private String owmForecastWeatherResponseToEntityString(final OwmWeatherForecastResponse forecast) {
 		return "{" +
 				"\"cod\":\"200\"" +
 				",\"message\":0.0001" +

@@ -10,7 +10,7 @@ import java.util.List;
 @Value
 @Builder
 @JsonDeserialize
-public class OwmForecastWeatherResponse {
+public class OwmWeatherForecastResponse {
 	City city;
 
 	@JsonProperty("list")
