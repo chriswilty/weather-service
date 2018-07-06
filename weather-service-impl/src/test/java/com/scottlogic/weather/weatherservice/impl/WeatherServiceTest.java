@@ -87,7 +87,7 @@ class WeatherServiceTest {
 	}
 
 	@Test
-	void weatherForecast_LocationFound_RespondsWithCurrentAndForecastWeather() throws Exception {
+	void weatherForecast_LocationFound_RespondsWithCurrentWeatherAndForecast() throws Exception {
 		final String location = "Helsinki, FI";
 		final WeatherForecastResponse result = sut.weatherForecast(location).invoke()
 				.toCompletableFuture().get(5, SECONDS);

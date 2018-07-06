@@ -56,12 +56,12 @@ public class OwmAdapterStub implements OwmAdapter {
 				case LOCATION_404:
 					throw new NotFound("no sir");
 				default:
-					return CompletableFuture.completedFuture(generateForecastWeatherData(location));
+					return CompletableFuture.completedFuture(generateWeatherForecastData(location));
 			}
 		};
 	}
 
-	private List<WeatherData> generateForecastWeatherData(final String location) {
+	private List<WeatherData> generateWeatherForecastData(final String location) {
 		final OffsetDateTime firstReading = OffsetDateTime.now().truncatedTo(ChronoUnit.HOURS).plusHours(1);
 
 		return IntStream.range(0, 40)

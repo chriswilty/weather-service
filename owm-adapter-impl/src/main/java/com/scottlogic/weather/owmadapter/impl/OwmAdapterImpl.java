@@ -51,7 +51,7 @@ public class OwmAdapterImpl implements OwmAdapter {
 		return request -> {
 			log.info("Received request for weather forecast for [{}]", location);
 
-			final List<WeatherData> response = this.transformOwmForecastWeatherData(
+			final List<WeatherData> response = this.transformOwmWeatherForecastData(
 					this.owmClient.getWeatherForecast(location)
 			);
 
@@ -83,7 +83,7 @@ public class OwmAdapterImpl implements OwmAdapter {
 				.build();
 	}
 
-	private List<WeatherData> transformOwmForecastWeatherData(final OwmWeatherForecastResponse owmResponse) {
+	private List<WeatherData> transformOwmWeatherForecastData(final OwmWeatherForecastResponse owmResponse) {
 		final City city = owmResponse.getCity();
 		final int id = city.getId();
 		final String location = city.getName() + ", " + city.getCountryCode();

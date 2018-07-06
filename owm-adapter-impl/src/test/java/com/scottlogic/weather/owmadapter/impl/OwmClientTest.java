@@ -124,13 +124,13 @@ class OwmClientTest {
 	}
 
 	@Test
-	void getForecastWeather_200Response_ReturnsWeatherData() {
-		final OwmWeatherForecastResponse expectedResponse = generateOwmForecastWeatherResponse();
+	void getWeatherForecast_200Response_ReturnsWeatherData() {
+		final OwmWeatherForecastResponse expectedResponse = generateOwmWeatherForecastResponse();
 		when(
 				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
 		).thenReturn(
 				httpSuccessResponseWithEntity(
-						owmForecastWeatherResponseToEntityString(expectedResponse)
+						owmWeatherForecastResponseToEntityString(expectedResponse)
 				)
 		);
 
@@ -141,7 +141,7 @@ class OwmClientTest {
 	}
 
 	@Test
-	void getForecastWeather_401Response_ThrowsUnauthorized() {
+	void getWeatherForecast_401Response_ThrowsUnauthorized() {
 		final String failureMessage = "Apocalypse, CA";
 		when(
 				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
@@ -158,7 +158,7 @@ class OwmClientTest {
 	}
 
 	@Test
-	void getForecastWeather_404Response_ThrowsNotFound() {
+	void getWeatherForecast_404Response_ThrowsNotFound() {
 		final String failureMessage = "X-Men: Apocalypse";
 		when(
 				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
@@ -219,7 +219,7 @@ class OwmClientTest {
 				.build();
 	}
 
-	private OwmWeatherForecastResponse generateOwmForecastWeatherResponse() {
+	private OwmWeatherForecastResponse generateOwmWeatherForecastResponse() {
 		final Instant firstMeasured = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
 		final Forecast templateForecast = generateForecast(firstMeasured);
@@ -311,7 +311,7 @@ class OwmClientTest {
 				"}";
 	}
 
-	private String owmForecastWeatherResponseToEntityString(final OwmWeatherForecastResponse forecast) {
+	private String owmWeatherForecastResponseToEntityString(final OwmWeatherForecastResponse forecast) {
 		return "{" +
 				"\"cod\":\"200\"" +
 				",\"message\":0.0001" +

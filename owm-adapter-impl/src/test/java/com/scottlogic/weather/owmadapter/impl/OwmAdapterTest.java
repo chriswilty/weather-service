@@ -78,9 +78,9 @@ class OwmAdapterTest {
 	}
 
 	@Test
-	void getForecastWeather_Success_RespondsWithListOfWeatherData() throws Exception {
+	void getWeatherForecast_Success_RespondsWithListOfWeatherData() throws Exception {
 		final String location = "Anywhere";
-		final OwmWeatherForecastResponse owmResponse = generateOwmForecastWeatherResponse();
+		final OwmWeatherForecastResponse owmResponse = generateOwmWeatherForecastResponse();
 		final List<WeatherData> expectedResult = generateWeatherDataFrom(owmResponse);
 
 		when(owmClient.getWeatherForecast(location)).thenReturn(owmResponse);
@@ -92,7 +92,7 @@ class OwmAdapterTest {
 	}
 
 	@Test
-	void getForecastWeather_TransportException_PropagatesSameExceptionToCaller() {
+	void getWeatherForecast_TransportException_PropagatesSameExceptionToCaller() {
 		final String location = "Somewhere";
 		final TransportException expectedException = new NotFound("whoops");
 
@@ -189,7 +189,7 @@ class OwmAdapterTest {
 				.build();
 	}
 
-	private OwmWeatherForecastResponse generateOwmForecastWeatherResponse() {
+	private OwmWeatherForecastResponse generateOwmWeatherForecastResponse() {
 		final Instant timeNow = Instant.parse("2018-06-21T13:00:00Z")
 				.minus(3, HOURS); // Helsinki is 3 hours ahead of UTC at the above time.
 		final Instant firstMeasured = timeNow.truncatedTo(ChronoUnit.HOURS);
