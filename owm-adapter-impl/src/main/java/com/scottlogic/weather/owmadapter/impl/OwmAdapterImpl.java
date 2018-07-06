@@ -51,7 +51,6 @@ public class OwmAdapterImpl implements OwmAdapter {
 		return request -> {
 			log.info("Received request for forecast weather in [{}]", location);
 
-			// TODO Real call to OWM and response transformer function.
 			final List<WeatherData> response = this.transformOwmForecastWeatherData(
 					this.owmClient.getForecastWeather(location)
 			);
