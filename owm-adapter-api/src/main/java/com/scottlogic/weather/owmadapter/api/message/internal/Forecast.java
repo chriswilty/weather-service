@@ -13,15 +13,14 @@ import java.util.List;
 @Builder
 @Wither
 public class Forecast {
-
 	@JsonProperty("dt")
 	@JsonFormat(shape=JsonFormat.Shape.NUMBER, pattern="s")
-	private final Instant measuredAt;
+	Instant measuredAt;
 
-	private final List<Weather> weather;
+	List<Weather> weather;
 
 	@JsonProperty("main")
-	private final Temperature temperature;
+	Temperature temperature;
 
-	private final Wind wind;
+	Wind wind;
 }

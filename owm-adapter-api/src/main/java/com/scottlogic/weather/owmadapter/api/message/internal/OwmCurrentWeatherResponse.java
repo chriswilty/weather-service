@@ -13,24 +13,23 @@ import java.util.List;
 @Builder
 @JsonDeserialize
 public class OwmCurrentWeatherResponse {
-
-	private final int id;
-	private final String name;
+	int id;
+	String name;
 
 	@JsonProperty("dt")
 	@JsonFormat(shape=JsonFormat.Shape.NUMBER, pattern="s")
-	private final Instant measuredAt;
+	Instant measuredAt;
 
 	@JsonProperty("sys")
-	private final Locale localeData;
+	Locale localeData;
 
 	@JsonProperty("coord")
-	private final Coordinates coordinates;
+	Coordinates coordinates;
 
-	private final List<Weather> weather;
+	List<Weather> weather;
 
 	@JsonProperty("main")
-	private final Temperature temperature;
+	Temperature temperature;
 
-	private final Wind wind;
+	Wind wind;
 }

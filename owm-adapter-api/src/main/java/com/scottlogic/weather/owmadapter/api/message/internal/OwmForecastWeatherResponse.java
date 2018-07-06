@@ -11,8 +11,8 @@ import java.util.List;
 @Builder
 @JsonDeserialize
 public class OwmForecastWeatherResponse {
-	private final City city;
+	City city;
 
 	@JsonProperty("list")
-	private final List<Forecast> forecasts;
+	List<Forecast> forecasts;
 }

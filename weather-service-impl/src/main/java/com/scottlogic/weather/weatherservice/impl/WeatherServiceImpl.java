@@ -118,8 +118,8 @@ public class WeatherServiceImpl implements WeatherService {
 			final int frequency = request.getFrequency();
 			log.info("Received request to set emit frequency to [{}]", frequency);
 
-			if (frequency < 1) {
-				badRequest("Frequency must be greater than zero");
+			if (frequency < 2) {
+				badRequest("Frequency must be greater than 1");
 			}
 
 			return this.entityRegistryFacade.sendCommandToPersistentEntity(

@@ -7,14 +7,12 @@ import lombok.Value;
 @Value
 @Builder
 public class City {
-
-	private final int id;
-	private final String name;
+	int id;
+	String name;
 
 	@JsonProperty("coord")
-	private final Coordinates coordinates;
+	Coordinates coordinates;
 
 	@JsonProperty("country")
-	private final String countryCode;
-
+	String countryCode;
 }

@@ -6,6 +6,6 @@ import lombok.Value;
 @Value
 @JsonDeserialize
 public class ErrorResponse {
-	private final int cod;
-	private final String message;
+	int cod;
+	String message;
 }

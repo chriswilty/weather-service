@@ -159,6 +159,13 @@ class WeatherServiceTest {
 	}
 
 	@Test
+	void setEmitFrequency_ValueOne_ThrowsBadRequest() {
+		assertThrows(BadRequest.class, () ->
+				sut.setEmitFrequency().invoke(new SetEmitFrequencyRequest(1)).toCompletableFuture().get(5, SECONDS)
+		);
+	}
+
+	@Test
 	void setEmitFrequency_ValueZero_ThrowsBadRequest() {
 		assertThrows(BadRequest.class, () ->
 				sut.setEmitFrequency().invoke(new SetEmitFrequencyRequest(0)).toCompletableFuture().get(5, SECONDS)

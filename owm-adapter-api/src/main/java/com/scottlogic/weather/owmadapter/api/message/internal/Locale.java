@@ -10,13 +10,12 @@ import java.time.Instant;
 @Value
 @Builder
 public class Locale {
-
 	@JsonProperty("country")
-	private final String countryCode;
+	String countryCode;
 
 	@JsonFormat(shape=JsonFormat.Shape.NUMBER, pattern="s")
-	private final Instant sunrise;
+	Instant sunrise;
 
 	@JsonFormat(shape=JsonFormat.Shape.NUMBER, pattern="s")
-	private final Instant sunset;
+	Instant sunset;
 }

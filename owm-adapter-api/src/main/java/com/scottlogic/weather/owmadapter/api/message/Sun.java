@@ -8,6 +8,6 @@ import java.time.OffsetDateTime;
 @Value
 @Builder
 public class Sun {
-	private final OffsetDateTime sunrise;
-	private final OffsetDateTime sunset;
+	OffsetDateTime sunrise;
+	OffsetDateTime sunset;
 }

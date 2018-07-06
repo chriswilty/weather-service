@@ -9,9 +9,8 @@ import java.math.BigDecimal;
 @Value
 @Builder
 public class Wind {
-
-	private final BigDecimal speed;
+	BigDecimal speed;
 
 	@JsonProperty("deg")
-	private final short fromDegrees;
+	short fromDegrees;
 }

@@ -11,7 +11,6 @@ import java.util.List;
 @Value
 @Builder
 public class WeatherStreamParameters implements Jsonable {
-
 	int emitFrequencySeconds;
 
 	@Singular

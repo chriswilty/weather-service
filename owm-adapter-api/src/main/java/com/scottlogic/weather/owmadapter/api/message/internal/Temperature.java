@@ -9,15 +9,14 @@ import java.math.BigDecimal;
 @Value
 @Builder
 public class Temperature {
-
-	private final BigDecimal temp;
+	BigDecimal temp;
 
 	@JsonProperty("temp_min")
-	private final BigDecimal tempMin;
+	BigDecimal tempMin;
 
 	@JsonProperty("temp_max")
-	private final BigDecimal tempMax;
+	BigDecimal tempMax;
 
 	// TODO!
-	//private final short humidity; // percent
+	//short humidity; // percent
 }
