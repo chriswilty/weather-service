@@ -18,4 +18,6 @@ public class Temperature {
 
 	@JsonSerialize(using = BigDecimalToStringSerializer.class)
 	BigDecimal maximum;
+
+	short humidity;
 }

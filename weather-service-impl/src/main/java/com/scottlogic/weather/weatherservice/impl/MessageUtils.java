@@ -57,6 +57,7 @@ public class MessageUtils {
 				.current(temperature.getCurrent())
 				.minimum(temperature.getMinimum())
 				.maximum(temperature.getMaximum())
+				.humidity(temperature.getHumidity())
 				.build();
 	}
 
