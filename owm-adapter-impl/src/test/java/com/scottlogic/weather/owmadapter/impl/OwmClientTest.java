@@ -135,7 +135,7 @@ class OwmClientTest {
 		);
 
 		sut = new OwmClient(actorSystem, http, configValid);
-		final OwmWeatherForecastResponse response = sut.getForecastWeather("anywhere");
+		final OwmWeatherForecastResponse response = sut.getWeatherForecast("anywhere");
 
 		assertThat(response, is(expectedResponse));
 	}
@@ -152,7 +152,7 @@ class OwmClientTest {
 		sut = new OwmClient(actorSystem, http, configBadApiKey);
 
 		final Unauthorized exception = assertThrows(
-				Unauthorized.class, () -> sut.getForecastWeather("anywhere")
+				Unauthorized.class, () -> sut.getWeatherForecast("anywhere")
 		);
 		assertThat(exception.getMessage(), is(failureMessage));
 	}
@@ -169,7 +169,7 @@ class OwmClientTest {
 		sut = new OwmClient(actorSystem, http, configValid);
 
 		final NotFound exception = assertThrows(
-				NotFound.class, () -> sut.getForecastWeather("Shoogly")
+				NotFound.class, () -> sut.getWeatherForecast("Shoogly")
 		);
 		assertThat(exception.getMessage(), is(failureMessage));
 	}

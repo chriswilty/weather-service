@@ -79,7 +79,7 @@ class OwmClient {
 		);
 	}
 
-	OwmWeatherForecastResponse getForecastWeather(final String location) throws TransportException {
+	OwmWeatherForecastResponse getWeatherForecast(final String location) throws TransportException {
 		return getWeather(
 				forecastWeatherUrl(location),
 				OwmWeatherForecastResponse.class

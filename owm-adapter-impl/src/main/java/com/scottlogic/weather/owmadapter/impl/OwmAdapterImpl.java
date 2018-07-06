@@ -52,7 +52,7 @@ public class OwmAdapterImpl implements OwmAdapter {
 			log.info("Received request for weather forecast for [{}]", location);
 
 			final List<WeatherData> response = this.transformOwmForecastWeatherData(
-					this.owmClient.getForecastWeather(location)
+					this.owmClient.getWeatherForecast(location)
 			);
 
 			log.info("Sending weather forecast response for [{}]", response.get(0).getLocation());

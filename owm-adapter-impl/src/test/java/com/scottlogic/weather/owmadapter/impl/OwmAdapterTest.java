@@ -83,7 +83,7 @@ class OwmAdapterTest {
 		final OwmWeatherForecastResponse owmResponse = generateOwmForecastWeatherResponse();
 		final List<WeatherData> expectedResult = generateWeatherDataFrom(owmResponse);
 
-		when(owmClient.getForecastWeather(location)).thenReturn(owmResponse);
+		when(owmClient.getWeatherForecast(location)).thenReturn(owmResponse);
 
 		final List<WeatherData> response = sut.getWeatherForecast(location).invoke()
 				.toCompletableFuture().get(5, SECONDS);
@@ -96,7 +96,7 @@ class OwmAdapterTest {
 		final String location = "Somewhere";
 		final TransportException expectedException = new NotFound("whoops");
 
-		when(owmClient.getForecastWeather(location)).thenThrow(expectedException);
+		when(owmClient.getWeatherForecast(location)).thenThrow(expectedException);
 
 		final TransportException result = assertThrows(TransportException.class, () ->
 				sut.getWeatherForecast(location).invoke()
