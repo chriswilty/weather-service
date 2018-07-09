@@ -11,4 +11,5 @@ public class Temperature {
 	BigDecimal current;
 	BigDecimal minimum;
 	BigDecimal maximum;
+	short humidity;
 }

@@ -256,6 +256,7 @@ class OwmClientTest {
 						.tempMin(new BigDecimal("28.0"))
 						.temp(new BigDecimal("35.2"))
 						.tempMax(new BigDecimal("40.7"))
+						.humidity((short) 90)
 						.build()
 				)
 				.wind(Wind.builder()
@@ -288,7 +289,7 @@ class OwmClientTest {
 				"\"main\":{" +
 					"\"temp\":" + current.getTemperature().getTemp().toPlainString() +
 					",\"pressure\":1011" +
-					",\"humidity\":71" +
+					",\"humidity\":" + current.getTemperature().getHumidity() +
 					",\"temp_min\":" + current.getTemperature().getTempMin().toPlainString() +
 					",\"temp_max\":" + current.getTemperature().getTempMax().toPlainString() +
 				"}," +
@@ -341,7 +342,7 @@ class OwmClientTest {
 				"\"temp\":" + forecast.getTemperature().getTemp().toPlainString() +
 				",\"temp_min\":" + forecast.getTemperature().getTempMin().toPlainString() +
 				",\"temp_max\":" + forecast.getTemperature().getTempMax().toPlainString() +
-				",\"humidity\":85" +
+				",\"humidity\":" + forecast.getTemperature().getHumidity() +
 				"}" +
 				",\"weather\":[{" +
 				"\"id\":" + forecast.getWeather().get(0).getId() +

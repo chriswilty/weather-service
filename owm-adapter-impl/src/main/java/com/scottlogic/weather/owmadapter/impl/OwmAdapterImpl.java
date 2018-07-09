@@ -117,6 +117,7 @@ public class OwmAdapterImpl implements OwmAdapter {
 				.minimum(temp.getTempMin())
 				.current(temp.getTemp())
 				.maximum(temp.getTempMax())
+				.humidity(temp.getHumidity())
 				.build();
 	}
 

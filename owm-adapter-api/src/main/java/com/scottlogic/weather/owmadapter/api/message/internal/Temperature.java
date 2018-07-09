@@ -17,6 +17,5 @@ public class Temperature {
 	@JsonProperty("temp_max")
 	BigDecimal tempMax;
 
-	// TODO!
-	//short humidity; // percent
+	short humidity; // percent
 }
