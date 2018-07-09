@@ -189,8 +189,10 @@ This is intended as a very simple showcase of
   current list of locations.
 
 ## Future Work
-- Better use of flows: re-build a source in response to events that change stream parameters.
-- 5-day weather forecast.
+- Onboarding endpoint: user must provide an
+  [OpenWeatherMap API Key](https://openweathermap.org/appid).
+- Authentication: basic auth for now, via ServiceCall composition and HeaderServiceCalls.
 - Ability to provide a numeric identifier for a location, as defined by OpenWeatherMap, for
   unambiguous identification.
+- Diagnostic Context, passed in messages (or header of non-message requests) to demonstrate tracing.
 - A simple front-end app for displaying streaming weather data.
