@@ -21,7 +21,7 @@ lazy val `weather-service-api` = (project in file("weather-service-api"))
     common,
     libraryDependencies ++= commonApiDeps
   )
-  .dependsOn(`common-lib`)
+  .dependsOn(`common-lib`, `owm-adapter-api`)
 
 lazy val `weather-service-impl` = (project in file("weather-service-impl"))
   .enablePlugins(LagomJava)

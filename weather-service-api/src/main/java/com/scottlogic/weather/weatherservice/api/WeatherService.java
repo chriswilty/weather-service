@@ -11,6 +11,7 @@ import com.scottlogic.weather.weatherservice.api.message.CurrentWeatherResponse;
 import com.scottlogic.weather.weatherservice.api.message.SetEmitFrequencyRequest;
 import com.scottlogic.weather.weatherservice.api.message.WeatherForecastResponse;
 import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
+import com.scottlogic.weather.weatherservice.api.serialization.CustomExceptionSerializer;
 
 import static com.lightbend.lagom.javadsl.api.Service.named;
 import static com.lightbend.lagom.javadsl.api.Service.restCall;
@@ -48,6 +49,7 @@ public interface WeatherService extends Service {
 						restCall(POST, "/api/weather-service/streaming/parameters/locations", this::addLocation),
 						restCall(DELETE, "/api/weather-service/streaming/parameters/locations/:location", this::removeLocation)
 				)
+				.withExceptionSerializer(CustomExceptionSerializer.getInstance())
 				.withAutoAcl(true);
 	}
 }

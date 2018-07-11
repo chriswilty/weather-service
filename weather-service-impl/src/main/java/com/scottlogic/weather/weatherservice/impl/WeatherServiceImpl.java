@@ -37,7 +37,7 @@ public class WeatherServiceImpl implements WeatherService {
 	// No user sessions for now; just one entity:
 	private final String entityId = "default";
 
-	private final OwmAdapter owmAdapterService;
+	private final OwmAdapter owmAdapter;
 	private final StreamGeneratorFactory streamGeneratorFactory;
 	private final PersistentEntityRegistryFacade entityRegistryFacade;
 
@@ -47,7 +47,7 @@ public class WeatherServiceImpl implements WeatherService {
 			final StreamGeneratorFactory streamGeneratorFactory,
 			final PersistentEntityRegistryFacade entityRegistryFacade
 	) {
-		this.owmAdapterService = owmAdapter;
+		this.owmAdapter = owmAdapter;
 		this.streamGeneratorFactory = streamGeneratorFactory;
 		this.entityRegistryFacade = entityRegistryFacade;
 		this.entityRegistryFacade.register(WeatherEntity.class);
@@ -57,7 +57,7 @@ public class WeatherServiceImpl implements WeatherService {
 	public ServiceCall<NotUsed, CurrentWeatherResponse> currentWeather(final String location) {
 		return request -> {
 			log.info("Received request for current weather in [{}]", location);
-			return this.owmAdapterService.getCurrentWeather(location).invoke()
+			return this.owmAdapter.getCurrentWeather(location).invoke()
 					.thenApply(MessageUtils::weatherDataToCurrentWeatherResponse)
 					.thenApply(response -> {
 						log.info("Sending current weather for [{}]", response.getLocation());
@@ -71,8 +71,8 @@ public class WeatherServiceImpl implements WeatherService {
 		return request -> {
 			log.info("Received request for weather forecast for [{}]", location);
 
-			final CompletionStage<WeatherData> current = this.owmAdapterService.getCurrentWeather(location).invoke();
-			final CompletionStage<List<WeatherData>> forecast = this.owmAdapterService.getWeatherForecast(location).invoke();
+			final CompletionStage<WeatherData> current = this.owmAdapter.getCurrentWeather(location).invoke();
+			final CompletionStage<List<WeatherData>> forecast = this.owmAdapter.getWeatherForecast(location).invoke();
 
 			return current.thenCombine(forecast, MessageUtils::weatherDataToWeatherForecastResponse)
 					.thenApply(response -> {
