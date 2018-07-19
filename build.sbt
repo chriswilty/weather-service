@@ -4,6 +4,10 @@ scalaVersion in ThisBuild := "2.12.6"
 
 lagomKafkaEnabled in ThisBuild := false
 
+// If tests run in parallel, Cassandra temp files cannot be deleted as the parallel thread has a
+// lock on these files and it seems that the main thread performs the teardown.
+parallelExecution in Test := false
+
 lazy val `weather-service` = (project in file("."))
   .aggregate(`weather-service-api`, `weather-service-impl`, `owm-adapter-api`, `owm-adapter-impl`)
 
