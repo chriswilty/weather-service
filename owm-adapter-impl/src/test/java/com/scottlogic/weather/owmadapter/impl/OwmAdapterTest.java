@@ -36,6 +36,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
+/**
+ * Note that we don't currently have an OWM test double, so we don't yet have integration tests for
+ * this service.
+ */
 @DisplayName("Tests for the OWM Adapter implementation")
 class OwmAdapterTest {
 	@Mock private OwmClient owmClient;

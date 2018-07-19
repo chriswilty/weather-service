@@ -206,6 +206,7 @@ public class StreamGenerator {
 			final Function<String, CompletionStage<T>> getWeatherFunction
 	) {
 		// OWM free tier only allows 60 API calls per minute, so throttle to one per second.
+		// In case OWM is slow, allow our own buffer of up to three concurrent requests.
 		return Source.cycle(locations::iterator)
 				.throttle(1, Duration.of(1, ChronoUnit.SECONDS))
 				.mapAsync(3, getWeatherFunction)

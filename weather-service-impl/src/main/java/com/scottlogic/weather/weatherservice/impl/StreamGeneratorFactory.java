@@ -17,7 +17,7 @@ public class StreamGeneratorFactory {
 	public StreamGeneratorFactory(
 			final OwmAdapter owmAdapter,
 			final PersistentEntityRegistryFacade persistentEntityRegistryFacade,
-			PubSubRegistryFacade pubSubRegistryFacade,
+			final PubSubRegistryFacade pubSubRegistryFacade,
 			final Materializer materializer
 	) {
 		this.owmAdapter = owmAdapter;

@@ -67,14 +67,14 @@ class WeatherEntityTest {
 	void commandGetWeatherStreamParameters_ReturnsValuesFromCurrentState() {
 		final WeatherState initialState = testDriver.initialize(Optional.empty()).state();
 
-		final Outcome<WeatherEvent, WeatherState> outcomeOne = testDriver.run(new GetWeatherStreamParameters());
-		assertThat(outcomeOne.issues(), is(empty()));
-		assertThat(outcomeOne.events(), is(empty()));
-		assertThat(outcomeOne.getReplies(), hasSize(1));
+		final Outcome<WeatherEvent, WeatherState> outcome = testDriver.run(new GetWeatherStreamParameters());
+		assertThat(outcome.issues(), is(empty()));
+		assertThat(outcome.events(), is(empty()));
+		assertThat(outcome.getReplies(), hasSize(1));
 
-		final WeatherStreamParameters replyOne = (WeatherStreamParameters) outcomeOne.getReplies().get(0);
-		assertThat(replyOne.getEmitFrequencySeconds(), is(initialState.getEmitFrequencySecs()));
-		assertThat(replyOne.getLocations(), is(initialState.getLocations()));
+		final WeatherStreamParameters reply = (WeatherStreamParameters) outcome.getReplies().get(0);
+		assertThat(reply.getEmitFrequencySeconds(), is(initialState.getEmitFrequencySecs()));
+		assertThat(reply.getLocations(), is(initialState.getLocations()));
 	}
 
 	@Test
