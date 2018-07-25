@@ -23,7 +23,8 @@ lazy val `common-lib` = (project in file("common-lib"))
 lazy val `weather-service-api` = (project in file("weather-service-api"))
   .settings(
     common,
-    libraryDependencies ++= commonApiDeps
+    libraryDependencies ++= commonApiDeps,
+    libraryDependencies += lagomJavadslPersistenceCassandra
   )
   .dependsOn(`common-lib`, `owm-adapter-api`)
 
@@ -32,7 +33,10 @@ lazy val `weather-service-impl` = (project in file("weather-service-impl"))
   .settings(
     common,
     libraryDependencies ++= commonImplDeps,
-    libraryDependencies += lagomJavadslPubSub,
+    libraryDependencies ++= Seq(
+      lagomJavadslPersistenceCassandra,
+      lagomJavadslPubSub
+    ),
     testOptions += Tests.Argument(jupiterTestFramework, "-a", "-v")
   )
   .settings(lagomForkedTestSettings: _*)
@@ -66,12 +70,10 @@ val mockito = "org.mockito" % "mockito-core" % "2.18.3" % Test
 lazy val commonApiDeps = Seq(
   lagomJavadslApi,
   lagomJavadslJackson,
-  lagomJavadslPersistenceCassandra,
   lombok
 )
 
 lazy val commonImplDeps = Seq(
-  lagomJavadslPersistenceCassandra,
   lagomJavadslTestKit,
   lagomLogback,
   hamcrest,
