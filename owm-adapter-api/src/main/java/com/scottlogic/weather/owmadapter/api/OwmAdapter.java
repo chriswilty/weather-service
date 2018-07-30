@@ -16,21 +16,23 @@ import static com.lightbend.lagom.javadsl.api.transport.Method.GET;
  * The OpenWeatherMap Adapter interface.
  * <p>
  * Describes everything Lagom needs for serving and consuming this adapter service.
+ * </p>
  */
 public interface OwmAdapter extends Service {
-
-	ServiceCall<NotUsed, WeatherData> getCurrentWeather(String location);
-	ServiceCall<NotUsed, List<WeatherData>> getWeatherForecast(String location);
 
 	@Override
 	default Descriptor descriptor() {
 		return named("owm-adapter")
 				.withCalls(
+						restCall(GET, "/api/owm-adapter/is-alive", this::isAlive),
 						restCall(GET, "/api/owm-adapter/current/:location", this::getCurrentWeather),
 						restCall(GET, "/api/owm-adapter/forecast/:location", this::getWeatherForecast)
 				)
 				.withAutoAcl(true);
 	}
 
+	ServiceCall<NotUsed, String> isAlive();
+	ServiceCall<NotUsed, WeatherData> getCurrentWeather(String location);
+	ServiceCall<NotUsed, List<WeatherData>> getWeatherForecast(String location);
 
 }

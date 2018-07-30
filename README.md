@@ -6,6 +6,77 @@ This is intended as a very simple showcase of
 - Lagom microservices, with a core service, external service adapter and persistence
 - Akka streams, with back-pressure, throttling and flow recovery techniques
 
+## Pre-requisites
+
+- Get the source code by Git cloning this project.
+- Install SBT build tool; you can
+  [download latest SBT from here](https://www.scala-sbt.org/download.html).
+
+## Run the services (development)
+
+- From a command prompt (Git Bash recommended on Windows OS), load the SBT shell by typing "sbt".
+  The first time you run this, it will take some time as it needs to download a tonne of libraries,
+  but eventually you should see an sbt prompt.
+
+  ```
+  $ sbt
+  .....
+  [info] Loading settings from plugins.sbt ...
+  [info] Loading project definition from C:\dev\lagom\weather-service\project
+  [info] Loading settings from build.sbt ...
+  [info] Set current project to weather-service (in build file:/C:/dev/lagom/weather-service/)
+  [info] sbt server started at local:sbt-server-abcdabcdabcdabcdabcd
+  sbt:weather-service>
+  ```
+
+- Compile the project, ignoring any warnings about version conflicts (which are due to Lagom 1.4
+  upgrading to Akka 2.5 and Play 2.6, while maintaining backward compatibility with some of the
+  libraries used in previous versions):
+
+  ```
+  sbt:weather-service> compile
+  [info] Updating ...
+  [info] Updating owm-adapter-api...
+  [info] Done updating.
+  [info] Done updating.
+  [warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+  ... (snip) ...
+  [success] Total time: 28 s, completed 30-Jul-2018 10:45:58
+  sbt:weather-service>
+  ```
+
+- Run the services using the Lagom development environment. This provides an embedded Cassandra
+  instance, a service locator and gateway, and also triggers hot-reloads following code changes:
+
+  ```
+  sbt:weather-service> runAll
+  [info] Starting Cassandra
+  ... (snip) ...
+  [info] Service owm-adapter-impl listening for HTTP on 0:0:0:0:0:0:0:0:53466
+  [info] Service weather-service-impl listening for HTTP on 0:0:0:0:0:0:0:0:57487
+  [info] (Services started, press enter to stop and go back to the console...)
+  ```
+
+- Check the services are running by navigating to
+  - [http://localhost:9000/api/weather-service/is-alive](http://localhost:9000/api/weather-service/is-alive)
+  - [http://localhost:9000/api/owm-adapter/is-alive](http://localhost:9000/api/owm-adapter/is-alive)
+
+## Run the tests
+
+Single run:
+
+```
+$ sbt test
+```
+
+Triggered by code changes:
+
+```
+$ sbt
+.....
+sbt:weather-service> ~ test
+```
+
 ## API
 
 ### Weather Data
@@ -15,7 +86,7 @@ creating an account (the free tier allows up to 60 requests per minute) and then
 [generating an API Key](https://home.openweathermap.org/api_keys) through the UI.
 
 You will then need to set this key as environment variable `source.owm.apiKey`. For example, when
-running SBT / Lagom in dev mode, you can pass it to the sbt command like this:
+running SBT / Lagom locally in development, you can pass it to the sbt command like this:
 
 ```sh
 sbt -Dsource.owm.apiKey=YourApiKeyGoesHere runAll
