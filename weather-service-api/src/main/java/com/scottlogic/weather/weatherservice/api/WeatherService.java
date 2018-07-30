@@ -23,23 +23,16 @@ import static com.lightbend.lagom.javadsl.api.transport.Method.PUT;
 /**
  * The weather service interface.
  * <p>
- * Describes everything Lagom needs for serving and consuming this service.
+ * Describes everything Lagom needs for serving and consuming this client-facing service.
+ * </p>
  */
 public interface WeatherService extends Service {
-
-	ServiceCall<NotUsed, CurrentWeatherResponse> currentWeather(String location);
-	ServiceCall<NotUsed, WeatherForecastResponse> weatherForecast(String location);
-	ServiceCall<NotUsed, Source<CurrentWeatherResponse, ?>> currentWeatherStream();
-	ServiceCall<NotUsed, Source<WeatherForecastResponse, ?>> weatherForecastStream();
-	ServiceCall<NotUsed, WeatherStreamParameters> weatherStreamParameters();
-	ServiceCall<SetEmitFrequencyRequest, Done> setEmitFrequency();
-	ServiceCall<AddLocationRequest, Done> addLocation();
-	ServiceCall<NotUsed, Done> removeLocation(String location);
 
 	@Override
 	default Descriptor descriptor() {
 		return named("weather-service")
 				.withCalls(
+						restCall(GET, "/api/weather-service/is-alive", this::isAlive),
 						restCall(GET, "/api/weather-service/current/:location", this::currentWeather),
 						restCall(GET, "/api/weather-service/forecast/:location", this::weatherForecast),
 						restCall(GET, "/api/weather-service/streaming/current", this::currentWeatherStream),
@@ -52,4 +45,14 @@ public interface WeatherService extends Service {
 				.withExceptionSerializer(CustomExceptionSerializer.getInstance())
 				.withAutoAcl(true);
 	}
+
+	ServiceCall<NotUsed, String> isAlive();
+	ServiceCall<NotUsed, CurrentWeatherResponse> currentWeather(String location);
+	ServiceCall<NotUsed, WeatherForecastResponse> weatherForecast(String location);
+	ServiceCall<NotUsed, Source<CurrentWeatherResponse, ?>> currentWeatherStream();
+	ServiceCall<NotUsed, Source<WeatherForecastResponse, ?>> weatherForecastStream();
+	ServiceCall<NotUsed, WeatherStreamParameters> weatherStreamParameters();
+	ServiceCall<SetEmitFrequencyRequest, Done> setEmitFrequency();
+	ServiceCall<AddLocationRequest, Done> addLocation();
+	ServiceCall<NotUsed, Done> removeLocation(String location);
 }

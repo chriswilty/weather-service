@@ -18,9 +18,12 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 public class OwmAdapterImpl implements OwmAdapter {
 
@@ -30,6 +33,14 @@ public class OwmAdapterImpl implements OwmAdapter {
 	@Inject
 	public OwmAdapterImpl(final OwmClient owmClient) {
 		this.owmClient = owmClient;
+	}
+
+	@Override
+	public ServiceCall<NotUsed, String> isAlive() {
+		return request -> completedFuture(
+				"Service \"" + descriptor().name() + "\" is alive: " +
+						OffsetDateTime.now().format(DateTimeFormatter.ofPattern("EEEE dd MMM uuuu HH:mm:ss Z"))
+		);
 	}
 
 	@Override

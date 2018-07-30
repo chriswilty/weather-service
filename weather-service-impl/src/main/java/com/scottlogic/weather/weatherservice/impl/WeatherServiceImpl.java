@@ -23,9 +23,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * Implementation of the WeatherService.
@@ -51,6 +54,14 @@ public class WeatherServiceImpl implements WeatherService {
 		this.streamGeneratorFactory = streamGeneratorFactory;
 		this.entityRegistryFacade = entityRegistryFacade;
 		this.entityRegistryFacade.register(WeatherEntity.class);
+	}
+
+	@Override
+	public ServiceCall<NotUsed, String> isAlive() {
+		return request -> completedFuture(
+				"Service \"" + descriptor().name() + "\" is alive: " +
+						OffsetDateTime.now().format(DateTimeFormatter.ofPattern("EEEE dd MMM uuuu HH:mm:ss Z"))
+		);
 	}
 
 	@Override
@@ -86,7 +97,7 @@ public class WeatherServiceImpl implements WeatherService {
 	public ServiceCall<NotUsed, Source<CurrentWeatherResponse, ?>> currentWeatherStream() {
 		return request -> {
 			log.info("Received request for stream of current weather");
-			return CompletableFuture.completedFuture(this.streamGeneratorFactory.get(entityId).getSourceOfCurrentWeatherData());
+			return completedFuture(this.streamGeneratorFactory.get(entityId).getSourceOfCurrentWeatherData());
 		};
 	}
 
@@ -94,7 +105,7 @@ public class WeatherServiceImpl implements WeatherService {
 	public ServiceCall<NotUsed, Source<WeatherForecastResponse, ?>> weatherForecastStream() {
 		return request -> {
 			log.info("Received request for stream of forecast weather");
-			return CompletableFuture.completedFuture(this.streamGeneratorFactory.get(entityId).getSourceOfWeatherForecastData());
+			return completedFuture(this.streamGeneratorFactory.get(entityId).getSourceOfWeatherForecastData());
 		};
 	}
 

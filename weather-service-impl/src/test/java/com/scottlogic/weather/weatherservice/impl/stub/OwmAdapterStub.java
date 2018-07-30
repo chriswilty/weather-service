@@ -16,11 +16,11 @@ import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static java.time.temporal.ChronoUnit.HOURS;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * Stub implementation of OWM Adapter service, returning faked data.
@@ -30,6 +30,11 @@ public class OwmAdapterStub implements OwmAdapter {
 	public static final String LOCATION_404 = "Trumpsbrain,US";
 
 	private static Random random = new Random();
+
+	@Override
+	public ServiceCall<NotUsed, String> isAlive() {
+		return request -> completedFuture("yes");
+	}
 
 	@Override
 	public ServiceCall<NotUsed, WeatherData> getCurrentWeather(final String location) {
@@ -42,7 +47,7 @@ public class OwmAdapterStub implements OwmAdapter {
 				case LOCATION_404:
 					throw new NotFound("no sir");
 				default:
-					return CompletableFuture.completedFuture(generateCurrentWeatherData(location));
+					return completedFuture(generateCurrentWeatherData(location));
 			}
 		};
 	}
@@ -56,7 +61,7 @@ public class OwmAdapterStub implements OwmAdapter {
 				case LOCATION_404:
 					throw new NotFound("no sir");
 				default:
-					return CompletableFuture.completedFuture(generateWeatherForecastData(location));
+					return completedFuture(generateWeatherForecastData(location));
 			}
 		};
 	}
