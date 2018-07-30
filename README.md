@@ -3,12 +3,23 @@
 A simple project that retrieves weather data from [Open Weather Map](https://openweathermap.org/).
 
 This is intended as a very simple showcase of
-- Lagom microservices, with external service adapters and persistence
+- Lagom microservices, with a core service, external service adapter and persistence
 - Akka streams, with back-pressure, throttling and flow recovery techniques
 
 ## API
 
 ### Weather Data
+
+In order to retrieve weather data from OpenWeatherMap, an API key is required. This involves
+creating an account (the free tier allows up to 60 requests per minute) and then
+[generating an API Key](https://home.openweathermap.org/api_keys) through the UI.
+
+You will then need to set this key as environment variable `source.owm.apiKey`. For example, when
+running SBT / Lagom in dev mode, you can pass it to the sbt command like this:
+
+```sh
+sbt -Dsource.owm.apiKey=YourApiKeyGoesHere runAll
+```
 
 #### Requests
 
@@ -56,12 +67,14 @@ This is intended as a very simple showcase of
   [Streaming Parameters](#streaming-parameters).
 
 #### Responses
-  Weather data are returned in a specific format; see example below.
-  Units are metric, i.e. temperature in degrees celsius, wind speed in m/s, visibility in metres,
-  precipitation in millimetres. Note that for _current_ weather data, min and max temperatures
-  are for the entire region at the time of measurement; these are likely to be the same for smaller
-  locations, but could be different for larger cities and metropolitan areas. For forecasts, minimum
-  and maximum temperatures will represent the forecasted variation throughout the day.
+  Weather data are returned in JSON format; see example below.
+  
+  Units are metric: temperature in degrees celsius, wind speed in m/s, visibility in metres,
+  precipitation in millimetres, humidity in percent. Note that for _current_ weather data, min and
+  max temperatures are observations over the entire region at the time of measurement; these are
+  likely to be the same for smaller locations, but could be different for large cities and
+  metropolitan areas. For forecasts, minimum and maximum temperatures represent variation within the
+  forecast period.
 
 ##### Current Weather
 
@@ -77,7 +90,8 @@ This is intended as a very simple showcase of
     "temperature": {
       "current": "12.4",
       "minimum": "10.9",
-      "maximum": "12.9"
+      "maximum": "12.9",
+      "humidity": 96
     },
     "wind": {
       "speed": "32.0",
@@ -105,7 +119,8 @@ This is intended as a very simple showcase of
     "temperature": {
       "current": "12.4",
       "minimum": "10.9",
-      "maximum": "12.9"
+      "maximum": "12.9",
+      "humidity": 96
     },
     "wind": {
       "speed": "32.0",
@@ -126,7 +141,8 @@ This is intended as a very simple showcase of
       "temperature": {
         "current": "12.4",
         "minimum": "10.9",
-        "maximum": "12.9"
+        "maximum": "12.9",
+        "humidity": 96
       },
       "wind": {
         "speed": "32.0",
@@ -189,10 +205,8 @@ This is intended as a very simple showcase of
   current list of locations.
 
 ## Future Work
-- Onboarding endpoint: user must provide an
-  [OpenWeatherMap API Key](https://openweathermap.org/appid).
-- Authentication: basic auth for now, via ServiceCall composition and HeaderServiceCalls.
 - Ability to provide a numeric identifier for a location, as defined by OpenWeatherMap, for
   unambiguous identification.
 - Diagnostic Context, passed in messages (or header of non-message requests) to demonstrate tracing.
 - A simple front-end app for displaying streaming weather data.
+- Authentication: basic auth for now? Could then demonstrate auth-check via ServiceCall composition.
