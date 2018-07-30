@@ -58,7 +58,7 @@ class OwmClient {
 		this.materializer = new MaterializerProvider(actorSystem).get();
 		this.objectMapper = JacksonObjectMapperProvider.get(actorSystem).objectMapper();
 
-		final Config owmConfig = config.getConfig("source.openWeatherMap");
+		final Config owmConfig = config.getConfig("source.owm");
 		// TODO Onboard user with this API key, and store in entity.
 		this.apiKey = owmConfig.getString("apiKey");
 
