@@ -5,6 +5,7 @@ import akka.http.javadsl.Http;
 import akka.http.javadsl.model.HttpEntities;
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
+import akka.http.javadsl.model.Uri;
 import akka.testkit.javadsl.TestKit;
 import com.google.common.collect.ImmutableList;
 import com.lightbend.lagom.javadsl.api.transport.NotFound;
@@ -25,7 +26,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.math.BigDecimal;
@@ -36,9 +37,11 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
@@ -73,28 +76,56 @@ class OwmClientTest {
 	}
 
 	@Test
-	void getCurrentWeather_200Response_ReturnsWeatherData() {
+	void getCurrentWeatherByName_200Response_ReturnsWeatherData() {
+		final String location = "anywhere";
+		final ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
 		final OwmCurrentWeatherResponse expectedResponse = generateOwmCurrentWeatherResponse();
-		when(
-				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
-		).thenReturn(
+
+		when(http.singleRequest(captor.capture())).thenReturn(
 				httpSuccessResponseWithEntity(
 						owmCurrentWeatherResponseToEntityString(expectedResponse)
 				)
 		);
 
 		sut = new OwmClient(actorSystem, http, configValid);
-		final OwmCurrentWeatherResponse response = sut.getCurrentWeather("anywhere");
+		final OwmCurrentWeatherResponse response = sut.getCurrentWeather(location);
 
 		assertThat(response, is(expectedResponse));
+
+		final Uri uri = captor.getValue().getUri();
+		assertThat(uri.path(), endsWith("weather"));
+		assertQueryParam(uri, "q", location);
+		assertQueryParam(uri, "units", "metric");
+	}
+
+	@Test
+	void getCurrentWeatherById_200Response_ReturnsWeatherData() {
+		final int location = 1234567;
+		final ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
+		final OwmCurrentWeatherResponse expectedResponse = generateOwmCurrentWeatherResponse();
+
+		when(http.singleRequest(captor.capture())).thenReturn(
+				httpSuccessResponseWithEntity(
+						owmCurrentWeatherResponseToEntityString(expectedResponse)
+				)
+		);
+
+		sut = new OwmClient(actorSystem, http, configValid);
+		final OwmCurrentWeatherResponse response = sut.getCurrentWeather(location);
+
+		assertThat(response, is(expectedResponse));
+
+		final Uri uri = captor.getValue().getUri();
+		assertThat(uri.path(), endsWith("weather"));
+		assertQueryParam(uri, "id", Integer.toString(location));
+		assertQueryParam(uri, "units", "metric");
 	}
 
 	@Test
 	void getCurrentWeather_401Response_ThrowsUnauthorized() {
 		final String failureMessage = "Apocalypse Now";
-		when(
-				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
-		).thenReturn(
+
+		when(http.singleRequest(any(HttpRequest.class))).thenReturn(
 				httpFailureResponseWithStatus(401, failureMessage)
 		);
 
@@ -109,9 +140,8 @@ class OwmClientTest {
 	@Test
 	void getCurrentWeather_404Response_ThrowsNotFound() {
 		final String failureMessage = "Whoops Apocalypse";
-		when(
-				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
-		).thenReturn(
+
+		when(http.singleRequest(any(HttpRequest.class))).thenReturn(
 				httpFailureResponseWithStatus(404, failureMessage)
 		);
 
@@ -124,28 +154,56 @@ class OwmClientTest {
 	}
 
 	@Test
-	void getWeatherForecast_200Response_ReturnsWeatherData() {
+	void getWeatherForecastByName_200Response_ReturnsWeatherData() {
+		final String location = "anywhere";
+		final ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
 		final OwmWeatherForecastResponse expectedResponse = generateOwmWeatherForecastResponse();
-		when(
-				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
-		).thenReturn(
+
+		when(http.singleRequest(captor.capture())).thenReturn(
 				httpSuccessResponseWithEntity(
 						owmWeatherForecastResponseToEntityString(expectedResponse)
 				)
 		);
 
 		sut = new OwmClient(actorSystem, http, configValid);
-		final OwmWeatherForecastResponse response = sut.getWeatherForecast("anywhere");
+		final OwmWeatherForecastResponse response = sut.getWeatherForecast(location);
 
 		assertThat(response, is(expectedResponse));
+
+		final Uri uri = captor.getValue().getUri();
+		assertThat(uri.path(), endsWith("forecast"));
+		assertQueryParam(uri, "q", location);
+		assertQueryParam(uri, "units", "metric");
+	}
+
+	@Test
+	void getWeatherForecastById_200Response_ReturnsWeatherData() {
+		final int location = 1234567;
+		final ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
+		final OwmWeatherForecastResponse expectedResponse = generateOwmWeatherForecastResponse();
+
+		when(http.singleRequest(captor.capture())).thenReturn(
+				httpSuccessResponseWithEntity(
+						owmWeatherForecastResponseToEntityString(expectedResponse)
+				)
+		);
+
+		sut = new OwmClient(actorSystem, http, configValid);
+		final OwmWeatherForecastResponse response = sut.getWeatherForecast(location);
+
+		assertThat(response, is(expectedResponse));
+
+		final Uri uri = captor.getValue().getUri();
+		assertThat(uri.path(), endsWith("forecast"));
+		assertQueryParam(uri, "id", Integer.toString(location));
+		assertQueryParam(uri, "units", "metric");
 	}
 
 	@Test
 	void getWeatherForecast_401Response_ThrowsUnauthorized() {
 		final String failureMessage = "Apocalypse, CA";
-		when(
-				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
-		).thenReturn(
+
+		when(http.singleRequest(any(HttpRequest.class))).thenReturn(
 				httpFailureResponseWithStatus(401, failureMessage)
 		);
 
@@ -160,9 +218,8 @@ class OwmClientTest {
 	@Test
 	void getWeatherForecast_404Response_ThrowsNotFound() {
 		final String failureMessage = "X-Men: Apocalypse";
-		when(
-				http.singleRequest(ArgumentMatchers.any(HttpRequest.class))
-		).thenReturn(
+
+		when(http.singleRequest(any(HttpRequest.class))).thenReturn(
 				httpFailureResponseWithStatus(404, failureMessage)
 		);
 
@@ -181,6 +238,10 @@ class OwmClientTest {
 				() -> new OwmClient(actorSystem, http, ConfigFactory.empty())
 		);
 		assertThat(exception.getMessage().toLowerCase(), containsString("no configuration setting found for key 'source'"));
+	}
+
+	private void assertQueryParam(final Uri uri, final String name, final String value) {
+		assertThat(uri.query().get(name).get(), is(value));
 	}
 
 	private OwmCurrentWeatherResponse generateOwmCurrentWeatherResponse() {

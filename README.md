@@ -95,12 +95,18 @@ sbt -Dsource.owm.apiKey=YourApiKeyGoesHere runAll
 #### Requests
 
 - `GET http: /api/weather-service/current/[location]`
-
+  
   Retrieves the current weather for a given location.
   
-  It is strongly recommended to provide a two-letter country code in your query. For example, a
-  search for "Wellington" will return weather for Wellington, New Zealand, but maybe you meant
-  Wellington in India, South Africa, or Australia (there are two of those)?
+  Location can either be a place name, e.g. "Edinburgh, GB", or a numeric ID as provided by Open
+  Weather Map, e.g. 2650225 is the ID for Edinburgh, GB.
+  
+  Retrieving by ID is preferable, as it removes the ambiguity of searching by place name, which can
+  match several locations.
+  
+  When searching by name, it is strongly recommended to provide a two-letter country code in your
+  query. For example, a search for "Wellington" will return weather for Wellington, New Zealand, but
+  maybe you meant Wellington in India, South Africa, or Australia (there are two of those)?
   
   Additionally, for unambiguous results it is recommended to be as specific as possible when
   querying a location. For example, a search for "Newcastle, GB" will return weather for Newcastle
@@ -110,13 +116,11 @@ sbt -Dsource.owm.apiKey=YourApiKeyGoesHere runAll
 
   Retrieves a five-day weather forecast for a given location, at three-hourly intervals.
   
-  It is strongly recommended to provide a two-letter country code in your query. For example, a
-  search for "Wellington" will return weather for Wellington, New Zealand, but maybe you meant
-  Wellington in India, South Africa, or Australia (there are two of those)?
+  Location can either be a place name, e.g. "London, GB", or a numeric ID as provided by Open
+  Weather Map, e.g. 2643743 is the ID for London, GB.
   
-  Additionally, for unambiguous results it is recommended to be as specific as possible when
-  querying a location. For example, a search for "Newcastle, GB" will return weather for Newcastle
-  in Monmouthshire, Wales, rather than for Newcastle upon Tyne or Newcastle-under-Lyme.
+  As for current weather requests, retrieving by ID is preferable, and when searching by name, try
+  to be as specific as possible.
 
 - `GET ws: /api/weather-service/streaming/current`
 
@@ -276,8 +280,6 @@ sbt -Dsource.owm.apiKey=YourApiKeyGoesHere runAll
   current list of locations.
 
 ## Future Work
-- Ability to provide a numeric identifier for a location, as defined by OpenWeatherMap, for
-  unambiguous identification.
 - Diagnostic Context, passed in messages (or header of non-message requests) to demonstrate tracing.
 - A simple front-end app for displaying streaming weather data.
 - Authentication: basic auth for now? Could then demonstrate auth-check via ServiceCall composition.

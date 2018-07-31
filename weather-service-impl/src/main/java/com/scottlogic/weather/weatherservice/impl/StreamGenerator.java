@@ -61,11 +61,11 @@ public class StreamGenerator {
 		this.materializer = materializer;
 		this.entityId = entityId;
 
-		this.getCurrentWeather = location -> this.owmAdapter.getCurrentWeather(location).invoke()
+		this.getCurrentWeather = location -> this.owmAdapter.getCurrentWeatherByName(location).invoke()
 				.thenApply(MessageUtils::weatherDataToCurrentWeatherResponse);
-		this.getWeatherForecast = location -> this.owmAdapter.getCurrentWeather(location).invoke()
+		this.getWeatherForecast = location -> this.owmAdapter.getCurrentWeatherByName(location).invoke()
 				.thenCombine(
-						this.owmAdapter.getWeatherForecast(location).invoke(),
+						this.owmAdapter.getWeatherForecastByName(location).invoke(),
 						MessageUtils::weatherDataToWeatherForecastResponse
 				);
 	}

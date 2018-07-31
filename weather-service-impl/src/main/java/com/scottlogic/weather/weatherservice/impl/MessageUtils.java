@@ -16,6 +16,7 @@ public class MessageUtils {
 
 	public static CurrentWeatherResponse weatherDataToCurrentWeatherResponse(final WeatherData current) {
 		return CurrentWeatherResponse.builder()
+				.id(current.getId())
 				.location(current.getLocation())
 				.current(weatherDataToWeatherSnapshot(current))
 				.build();
@@ -26,6 +27,7 @@ public class MessageUtils {
 			final List<WeatherData> forecasts
 	) {
 		return WeatherForecastResponse.builder()
+				.id(current.getId())
 				.location(current.getLocation())
 				.current(weatherDataToWeatherSnapshot(current))
 				.forecast(forecasts.parallelStream()

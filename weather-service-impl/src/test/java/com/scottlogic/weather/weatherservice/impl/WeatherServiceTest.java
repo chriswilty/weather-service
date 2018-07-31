@@ -54,11 +54,21 @@ class WeatherServiceTest {
 	}
 
 	@Test
-	void currentWeather_LocationFound_RespondsWithCurrentWeather() throws Exception {
+	void currentWeatherWithName_LocationFound_RespondsWithCurrentWeather() throws Exception {
 		final String location = "Edinburgh,UK";
-		final CurrentWeatherResponse result = sut.currentWeather(location).invoke().toCompletableFuture().get(5, SECONDS);
+		final CurrentWeatherResponse result = sut.currentWeather(location).invoke()
+				.toCompletableFuture().get(5, SECONDS);
 
 		assertThat(result.getLocation(), is(location));
+	}
+
+	@Test
+	void currentWeatherWithId_LocationFound_RespondsWithCurrentWeather() throws Exception {
+		final int location = 3489457;
+		final CurrentWeatherResponse result = sut.currentWeather(Integer.toString(location)).invoke()
+				.toCompletableFuture().get(5, SECONDS);
+
+		assertThat(result.getId(), is(location));
 	}
 	
 	@Test
@@ -87,12 +97,22 @@ class WeatherServiceTest {
 	}
 
 	@Test
-	void weatherForecast_LocationFound_RespondsWithCurrentWeatherAndForecast() throws Exception {
+	void weatherForecastWithName_LocationFound_RespondsWithCurrentWeatherAndForecast() throws Exception {
 		final String location = "Helsinki, FI";
 		final WeatherForecastResponse result = sut.weatherForecast(location).invoke()
 				.toCompletableFuture().get(5, SECONDS);
 
 		assertThat(result.getLocation(), is(location));
+		assertThat(result.getForecast().size(), is(40)); // 5 days, 8 forecasts per day
+	}
+
+	@Test
+	void weatherForecastWithId_LocationFound_RespondsWithCurrentWeatherAndForecast() throws Exception {
+		final int location = 7346534;
+		final WeatherForecastResponse result = sut.weatherForecast(Integer.toString(location)).invoke()
+				.toCompletableFuture().get(5, SECONDS);
+
+		assertThat(result.getId(), is(location));
 		assertThat(result.getForecast().size(), is(40)); // 5 days, 8 forecasts per day
 	}
 

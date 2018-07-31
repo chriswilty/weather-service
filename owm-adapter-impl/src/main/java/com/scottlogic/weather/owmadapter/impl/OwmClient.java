@@ -50,7 +50,7 @@ class OwmClient {
 	private final Materializer materializer;
 	private final ObjectMapper objectMapper;
 	private final String baseUrl;
-	private final String apiKey;
+	private final String unitsAndApiKeySegment;
 
 	@Inject
 	OwmClient(final ActorSystem actorSystem, final Http http, final Config config) {
@@ -59,8 +59,8 @@ class OwmClient {
 		this.objectMapper = JacksonObjectMapperProvider.get(actorSystem).objectMapper();
 
 		final Config owmConfig = config.getConfig("source.owm");
-		// TODO Onboard user with this API key, and store in entity.
-		this.apiKey = owmConfig.getString("apiKey");
+		// TODO Onboard user with this API key, and store in entity?
+		this.unitsAndApiKeySegment = "?units=metric&appid=" + owmConfig.getString("apiKey");
 
 		final String url = owmConfig.getString("url");
 		this.baseUrl = url + (url.endsWith("/") ? "" : "/");
@@ -74,19 +74,33 @@ class OwmClient {
 
 	OwmCurrentWeatherResponse getCurrentWeather(final String location) throws TransportException {
 		return getWeather(
-				currentWeatherUrl(location),
+				currentWeatherByNameUrl(location),
+				OwmCurrentWeatherResponse.class
+		);
+	}
+
+	OwmCurrentWeatherResponse getCurrentWeather(final int location) throws TransportException {
+		return getWeather(
+				currentWeatherByIdUrl(location),
 				OwmCurrentWeatherResponse.class
 		);
 	}
 
 	OwmWeatherForecastResponse getWeatherForecast(final String location) throws TransportException {
 		return getWeather(
-				weatherForecastUrl(location),
+				weatherForecastByNameUrl(location),
 				OwmWeatherForecastResponse.class
 		);
 	}
 
-	<T> T getWeather(final String url, final Class<T> responseClass) throws TransportException {
+	OwmWeatherForecastResponse getWeatherForecast(final int location) throws TransportException {
+		return getWeather(
+				weatherForecastByIdUrl(location),
+				OwmWeatherForecastResponse.class
+		);
+	}
+
+	private <T> T getWeather(final String url, final Class<T> responseClass) throws TransportException {
 		try {
 			return this.http.singleRequest(HttpRequest.create(url))
 					.thenApply(httpResponse -> {
@@ -172,24 +186,39 @@ class OwmClient {
 		);
 	}
 
-	private String currentWeatherUrl(final String location) throws TransportException {
-		return weatherUrl(CURRENT_WEATHER_SEGMENT, location);
+	private String currentWeatherByNameUrl(final String location) throws TransportException {
+		return weatherByNameUrl(CURRENT_WEATHER_SEGMENT, location);
 	}
 
-	private String weatherForecastUrl(final String location) throws TransportException {
-		return weatherUrl(WEATHER_FORECAST_SEGMENT, location);
+	private String currentWeatherByIdUrl(final int location) {
+		return weatherByIdUrl(CURRENT_WEATHER_SEGMENT, location);
 	}
 
-	private String weatherUrl(final String segment, final String location) throws TransportException {
+	private String weatherForecastByNameUrl(final String location) throws TransportException {
+		return weatherByNameUrl(WEATHER_FORECAST_SEGMENT, location);
+	}
+
+	private String weatherForecastByIdUrl(final int location) {
+		return weatherByIdUrl(WEATHER_FORECAST_SEGMENT, location);
+	}
+
+	private String weatherByNameUrl(final String segment, final String location) throws TransportException {
 		try {
 			final String locationEncoded = URLEncoder.encode(location, StandardCharsets.UTF_8.name());
 			return this.baseUrl +
 					segment +
-					"?units=metric&appid=" + this.apiKey +
+					this.unitsAndApiKeySegment +
 					"&q=" + locationEncoded;
 		} catch (UnsupportedEncodingException e) {
 			log.error("Problem encoding URL for OpenWeatherMap", e);
 			throw internalServerError(e);
 		}
+	}
+
+	private String weatherByIdUrl(final String segment, final int location) {
+		return this.baseUrl +
+				segment +
+				this.unitsAndApiKeySegment +
+				"&id=" + location;
 	}
 }
