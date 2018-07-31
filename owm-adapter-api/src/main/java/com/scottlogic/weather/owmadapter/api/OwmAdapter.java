@@ -25,14 +25,18 @@ public interface OwmAdapter extends Service {
 		return named("owm-adapter")
 				.withCalls(
 						restCall(GET, "/api/owm-adapter/is-alive", this::isAlive),
-						restCall(GET, "/api/owm-adapter/current/:location", this::getCurrentWeather),
-						restCall(GET, "/api/owm-adapter/forecast/:location", this::getWeatherForecast)
+						restCall(GET, "/api/owm-adapter/current?location", this::getCurrentWeatherByName),
+						restCall(GET, "/api/owm-adapter/current/:id", this::getCurrentWeatherById),
+						restCall(GET, "/api/owm-adapter/forecast?location", this::getWeatherForecastByName),
+						restCall(GET, "/api/owm-adapter/forecast/:id", this::getWeatherForecastById)
 				)
 				.withAutoAcl(true);
 	}
 
 	ServiceCall<NotUsed, String> isAlive();
-	ServiceCall<NotUsed, WeatherData> getCurrentWeather(String location);
-	ServiceCall<NotUsed, List<WeatherData>> getWeatherForecast(String location);
+	ServiceCall<NotUsed, WeatherData> getCurrentWeatherByName(String location);
+	ServiceCall<NotUsed, WeatherData> getCurrentWeatherById(int id);
+	ServiceCall<NotUsed, List<WeatherData>> getWeatherForecastByName(String location);
+	ServiceCall<NotUsed, List<WeatherData>> getWeatherForecastById(int location);
 
 }

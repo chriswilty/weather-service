@@ -13,6 +13,7 @@ import com.scottlogic.weather.weatherservice.api.message.AddLocationRequest;
 import com.scottlogic.weather.weatherservice.api.message.CurrentWeatherResponse;
 import com.scottlogic.weather.weatherservice.api.message.SetEmitFrequencyRequest;
 import com.scottlogic.weather.weatherservice.api.message.WeatherForecastResponse;
+import com.scottlogic.weather.weatherservice.api.message.WeatherResponse;
 import com.scottlogic.weather.weatherservice.api.message.WeatherStreamParameters;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.AddLocation;
 import com.scottlogic.weather.weatherservice.impl.entity.WeatherCommand.ChangeEmitFrequency;
@@ -27,6 +28,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.regex.Pattern;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
@@ -36,6 +38,7 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
 public class WeatherServiceImpl implements WeatherService {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
+	private final Pattern positiveNumberMatcher = Pattern.compile("\\d+");
 
 	// No user sessions for now; just one entity:
 	private final String entityId = "default";
@@ -66,31 +69,16 @@ public class WeatherServiceImpl implements WeatherService {
 
 	@Override
 	public ServiceCall<NotUsed, CurrentWeatherResponse> currentWeather(final String location) {
-		return request -> {
-			log.info("Received request for current weather in [{}]", location);
-			return this.owmAdapter.getCurrentWeather(location).invoke()
-					.thenApply(MessageUtils::weatherDataToCurrentWeatherResponse)
-					.thenApply(response -> {
-						log.info("Sending current weather for [{}]", response.getLocation());
-						return response;
-					});
-		};
+		return positiveNumberMatcher.matcher(location).matches()
+				? currentWeatherById(Integer.parseInt(location))
+				: currentWeatherByName(location);
 	}
 
 	@Override
-	public ServiceCall<NotUsed, WeatherForecastResponse> weatherForecast(String location) {
-		return request -> {
-			log.info("Received request for weather forecast for [{}]", location);
-
-			final CompletionStage<WeatherData> current = this.owmAdapter.getCurrentWeather(location).invoke();
-			final CompletionStage<List<WeatherData>> forecast = this.owmAdapter.getWeatherForecast(location).invoke();
-
-			return current.thenCombine(forecast, MessageUtils::weatherDataToWeatherForecastResponse)
-					.thenApply(response -> {
-						log.info("Sending weather forecast for [{}]", response.getLocation());
-						return response;
-					});
-		};
+	public ServiceCall<NotUsed, WeatherForecastResponse> weatherForecast(final String location) {
+		return positiveNumberMatcher.matcher(location).matches()
+				? weatherForecastById(Integer.parseInt(location))
+				: weatherForecastByName(location);
 	}
 
 	@Override
@@ -117,7 +105,7 @@ public class WeatherServiceImpl implements WeatherService {
 					WeatherEntity.class,
 					entityId,
 					new GetWeatherStreamParameters()
-			).thenApply(this::logResponse);
+			).thenApply(this::logGenericResponse);
 		};
 	}
 
@@ -174,7 +162,59 @@ public class WeatherServiceImpl implements WeatherService {
 		};
 	}
 
-	private <T> T logResponse(final T response) {
+	private ServiceCall<NotUsed, CurrentWeatherResponse> currentWeatherByName(final String name) {
+		return request -> {
+			log.info("Received request for current weather in [{}]", name);
+			return this.owmAdapter.getCurrentWeatherByName(name).invoke()
+					.thenApply(MessageUtils::weatherDataToCurrentWeatherResponse)
+					.thenApply(this::logWeatherResponse);
+		};
+	}
+
+	private ServiceCall<NotUsed, CurrentWeatherResponse> currentWeatherById(final int id) {
+		return request -> {
+			log.info("Received request for current weather for location [{}]", id);
+			return this.owmAdapter.getCurrentWeatherById(id).invoke()
+					.thenApply(MessageUtils::weatherDataToCurrentWeatherResponse)
+					.thenApply(this::logWeatherResponse);
+		};
+	}
+
+	private ServiceCall<NotUsed, WeatherForecastResponse> weatherForecastByName(final String name) {
+		return request -> {
+			log.info("Received request for weather forecast for [{}]", name);
+
+			final CompletionStage<WeatherData> current = this.owmAdapter.getCurrentWeatherByName(name).invoke();
+			final CompletionStage<List<WeatherData>> forecast = this.owmAdapter.getWeatherForecastByName(name).invoke();
+
+			return current.thenCombine(forecast, MessageUtils::weatherDataToWeatherForecastResponse)
+					.thenApply(this::logWeatherResponse);
+		};
+	}
+
+	private ServiceCall<NotUsed, WeatherForecastResponse> weatherForecastById(final int id) {
+		return request -> {
+			log.info("Received request for weather forecast for location [{}]", id);
+
+			final CompletionStage<WeatherData> current = this.owmAdapter.getCurrentWeatherById(id).invoke();
+			final CompletionStage<List<WeatherData>> forecast = this.owmAdapter.getWeatherForecastById(id).invoke();
+
+			return current.thenCombine(forecast, MessageUtils::weatherDataToWeatherForecastResponse)
+					.thenApply(this::logWeatherResponse);
+		};
+	}
+
+	private <T extends WeatherResponse> T logWeatherResponse(final T response) {
+		log.info(
+				"Sending {} for [{} ({})]",
+				response instanceof CurrentWeatherResponse ? "current weather" : "weather forecast",
+				response.getLocation(),
+				response.getId()
+		);
+		return response;
+	}
+
+	private <T> T logGenericResponse(final T response) {
 		log.info("Sending response: {}", response);
 		return response;
 	}

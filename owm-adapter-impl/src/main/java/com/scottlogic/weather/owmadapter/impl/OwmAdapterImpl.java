@@ -20,7 +20,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
@@ -44,7 +43,7 @@ public class OwmAdapterImpl implements OwmAdapter {
 	}
 
 	@Override
-	public ServiceCall<NotUsed, WeatherData> getCurrentWeather(final String location) {
+	public ServiceCall<NotUsed, WeatherData> getCurrentWeatherByName(final String location) {
 		return request -> {
 			log.info("Received request for current weather in [{}]", location);
 
@@ -53,12 +52,26 @@ public class OwmAdapterImpl implements OwmAdapter {
 			);
 
 			log.info("Sending current weather response for [{}]", response.getLocation());
-			return CompletableFuture.completedFuture(response);
+			return completedFuture(response);
 		};
 	}
 
 	@Override
-	public ServiceCall<NotUsed, List<WeatherData>> getWeatherForecast(String location) {
+	public ServiceCall<NotUsed, WeatherData> getCurrentWeatherById(final int location) {
+		return request -> {
+			log.info("Received request for current weather for location [{}]", location);
+
+			final WeatherData response = this.transformOwmCurrentWeatherData(
+					this.owmClient.getCurrentWeather(location)
+			);
+
+			log.info("Sending current weather response for [{} ({})]", response.getLocation(), response.getId());
+			return completedFuture(response);
+		};
+	}
+
+	@Override
+	public ServiceCall<NotUsed, List<WeatherData>> getWeatherForecastByName(final String location) {
 		return request -> {
 			log.info("Received request for weather forecast for [{}]", location);
 
@@ -67,7 +80,22 @@ public class OwmAdapterImpl implements OwmAdapter {
 			);
 
 			log.info("Sending weather forecast response for [{}]", response.get(0).getLocation());
-			return CompletableFuture.completedFuture(response);
+			return completedFuture(response);
+		};
+	}
+
+	@Override
+	public ServiceCall<NotUsed, List<WeatherData>> getWeatherForecastById(final int location) {
+		return request -> {
+			log.info("Received request for weather forecast for location [{}]", location);
+
+			final List<WeatherData> response = this.transformOwmWeatherForecastData(
+					this.owmClient.getWeatherForecast(location)
+			);
+
+			final WeatherData firstEntry = response.get(0);
+			log.info("Sending weather forecast response for [{} ({})]", firstEntry.getLocation(), firstEntry.getId());
+			return completedFuture(response);
 		};
 	}
 

@@ -53,28 +53,28 @@ class OwmAdapterTest {
 	}
 
 	@Test
-	void getCurrentWeather_Success_RespondsWithWeatherData() throws Exception {
+	void getCurrentWeatherByName_Success_RespondsWithWeatherData() throws Exception {
 		final String location = "Anywhere";
 		final OwmCurrentWeatherResponse owmResponse = generateOwmCurrentWeatherResponse();
 		final WeatherData expectedResult = generateWeatherDataFrom(owmResponse);
 
 		when(owmClient.getCurrentWeather(location)).thenReturn(owmResponse);
 
-		final WeatherData response = sut.getCurrentWeather(location).invoke()
+		final WeatherData response = sut.getCurrentWeatherByName(location).invoke()
 				.toCompletableFuture().get(5, SECONDS);
 
 		assertThat(response, is(expectedResult));
 	}
 
 	@Test
-	void getCurrentWeather_TransportException_PropagatesSameExceptionToCaller() {
-		final String location = "Somewhere";
+	void getCurrentWeatherByName_TransportException_PropagatesSameExceptionToCaller() {
+		final String location = "Anywhere";
 		final TransportException expectedException = new NotFound("whoops");
 
 		when(owmClient.getCurrentWeather(location)).thenThrow(expectedException);
 
 		final TransportException result = assertThrows(TransportException.class, () ->
-				sut.getCurrentWeather(location).invoke()
+				sut.getCurrentWeatherByName(location).invoke()
 						.toCompletableFuture().get(5, SECONDS)
 		);
 
@@ -82,28 +82,86 @@ class OwmAdapterTest {
 	}
 
 	@Test
-	void getWeatherForecast_Success_RespondsWithListOfWeatherData() throws Exception {
-		final String location = "Anywhere";
-		final OwmWeatherForecastResponse owmResponse = generateOwmWeatherForecastResponse();
-		final List<WeatherData> expectedResult = generateWeatherDataFrom(owmResponse);
+	void getCurrentWeatherById_Success_RespondsWithWeatherData() throws Exception {
+		final int location = 1234567;
+		final OwmCurrentWeatherResponse owmResponse = generateOwmCurrentWeatherResponse();
+		final WeatherData expectedResult = generateWeatherDataFrom(owmResponse);
 
-		when(owmClient.getWeatherForecast(location)).thenReturn(owmResponse);
+		when(owmClient.getCurrentWeather(location)).thenReturn(owmResponse);
 
-		final List<WeatherData> response = sut.getWeatherForecast(location).invoke()
+		final WeatherData response = sut.getCurrentWeatherById(location).invoke()
 				.toCompletableFuture().get(5, SECONDS);
 
 		assertThat(response, is(expectedResult));
 	}
 
 	@Test
-	void getWeatherForecast_TransportException_PropagatesSameExceptionToCaller() {
+	void getCurrentWeatherById_TransportException_PropagatesSameExceptionToCaller() {
+		final int location = 1234567;
+		final TransportException expectedException = new NotFound("whoops");
+
+		when(owmClient.getCurrentWeather(location)).thenThrow(expectedException);
+
+		final TransportException result = assertThrows(TransportException.class, () ->
+				sut.getCurrentWeatherById(location).invoke()
+						.toCompletableFuture().get(5, SECONDS)
+		);
+
+		assertThat(result, is(expectedException));
+	}
+
+	@Test
+	void getWeatherForecastByName_Success_RespondsWithListOfWeatherData() throws Exception {
+		final String location = "Somewhere";
+		final OwmWeatherForecastResponse owmResponse = generateOwmWeatherForecastResponse();
+		final List<WeatherData> expectedResult = generateWeatherDataFrom(owmResponse);
+
+		when(owmClient.getWeatherForecast(location)).thenReturn(owmResponse);
+
+		final List<WeatherData> response = sut.getWeatherForecastByName(location).invoke()
+				.toCompletableFuture().get(5, SECONDS);
+
+		assertThat(response, is(expectedResult));
+	}
+
+	@Test
+	void getWeatherForecastByName_TransportException_PropagatesSameExceptionToCaller() {
 		final String location = "Somewhere";
 		final TransportException expectedException = new NotFound("whoops");
 
 		when(owmClient.getWeatherForecast(location)).thenThrow(expectedException);
 
 		final TransportException result = assertThrows(TransportException.class, () ->
-				sut.getWeatherForecast(location).invoke()
+				sut.getWeatherForecastByName(location).invoke()
+						.toCompletableFuture().get(5, SECONDS)
+		);
+
+		assertThat(result, is(expectedException));
+	}
+
+	@Test
+	void getWeatherForecastById_Success_RespondsWithListOfWeatherData() throws Exception {
+		final int location = 9876543;
+		final OwmWeatherForecastResponse owmResponse = generateOwmWeatherForecastResponse();
+		final List<WeatherData> expectedResult = generateWeatherDataFrom(owmResponse);
+
+		when(owmClient.getWeatherForecast(location)).thenReturn(owmResponse);
+
+		final List<WeatherData> response = sut.getWeatherForecastById(location).invoke()
+				.toCompletableFuture().get(5, SECONDS);
+
+		assertThat(response, is(expectedResult));
+	}
+
+	@Test
+	void getWeatherForecastById_TransportException_PropagatesSameExceptionToCaller() {
+		final int location = 9876543;
+		final TransportException expectedException = new NotFound("whoops");
+
+		when(owmClient.getWeatherForecast(location)).thenThrow(expectedException);
+
+		final TransportException result = assertThrows(TransportException.class, () ->
+				sut.getWeatherForecastById(location).invoke()
 						.toCompletableFuture().get(5, SECONDS)
 		);
 

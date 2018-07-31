@@ -37,7 +37,7 @@ public class OwmAdapterStub implements OwmAdapter {
 	}
 
 	@Override
-	public ServiceCall<NotUsed, WeatherData> getCurrentWeather(final String location) {
+	public ServiceCall<NotUsed, WeatherData> getCurrentWeatherByName(final String location) {
 		// TODO Include a case for Service Unavailable? Work out what happens when OWM is unreachable.
 		// Then devise a supervision / retry strategy within the flow.
 		return request -> {
@@ -53,7 +53,12 @@ public class OwmAdapterStub implements OwmAdapter {
 	}
 
 	@Override
-	public ServiceCall<NotUsed, List<WeatherData>> getWeatherForecast(final String location) {
+	public ServiceCall<NotUsed, WeatherData> getCurrentWeatherById(final int id) {
+		return request -> completedFuture(generateCurrentWeatherData(id));
+	}
+
+	@Override
+	public ServiceCall<NotUsed, List<WeatherData>> getWeatherForecastByName(final String location) {
 		return request -> {
 			switch (location) {
 				case LOCATION_401:
@@ -66,12 +71,25 @@ public class OwmAdapterStub implements OwmAdapter {
 		};
 	}
 
+	@Override
+	public ServiceCall<NotUsed, List<WeatherData>> getWeatherForecastById(final int location) {
+		return request -> completedFuture(generateWeatherForecastData(location));
+	}
+
+	private List<WeatherData> generateWeatherForecastData(final int id) {
+		return generateWeatherForecastData(id, "Nowhere, US");
+	}
+
 	private List<WeatherData> generateWeatherForecastData(final String location) {
+		return generateWeatherForecastData(1234567, location);
+	}
+
+	private List<WeatherData> generateWeatherForecastData(final int id, final String location) {
 		final OffsetDateTime firstReading = OffsetDateTime.now().truncatedTo(ChronoUnit.HOURS).plusHours(1);
 
 		return IntStream.range(0, 40)
 				.mapToObj(i ->
-						generateCurrentWeatherData(location).toBuilder()
+						generateCurrentWeatherData(id, location).toBuilder()
 								.sun(null)
 								.measured(firstReading.plusHours(i * 3))
 								.build()
@@ -79,7 +97,15 @@ public class OwmAdapterStub implements OwmAdapter {
 				.collect(Collectors.toList());
 	}
 
+	private WeatherData generateCurrentWeatherData(final int id) {
+		return generateCurrentWeatherData(id, "Nowhere, US");
+	}
+
 	private WeatherData generateCurrentWeatherData(final String location) {
+		return generateCurrentWeatherData(1234567, location);
+	}
+
+	private WeatherData generateCurrentWeatherData(final int id, final String location) {
 		final OffsetDateTime now = OffsetDateTime.now();
 		final short windDirection = (short) random.nextInt(360);
 		final BigDecimal windSpeed = BigDecimal.valueOf(random.nextInt(400))
@@ -87,7 +113,7 @@ public class OwmAdapterStub implements OwmAdapter {
 				.divide(BigDecimal.TEN);
 
 		return WeatherData.builder()
-				.id(1234567)
+				.id(id)
 				.location(location)
 				.measured(now.truncatedTo(ChronoUnit.HOURS))
 				.weather(Weather.builder()

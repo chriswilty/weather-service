@@ -59,13 +59,23 @@ class WeatherServiceIT {
 	}
 
 	@Test
-	void currentWeather_ValidLocation_RespondsWithWeatherData() throws Exception {
+	void currentWeather_ValidLocationName_RespondsWithWeatherData() throws Exception {
 		final String location = "Stockholm, SE";
 
 		final CurrentWeatherResponse response = weatherService.currentWeather(location).invoke()
 				.toCompletableFuture().get(5, SECONDS);
 
 		assertThat(response.getLocation(), is(location));
+	}
+
+	@Test
+	void currentWeather_ValidLocationId_RespondsWithWeatherData() throws Exception {
+		final int location = 564378;
+
+		final CurrentWeatherResponse response = weatherService.currentWeather(Integer.toString(location)).invoke()
+				.toCompletableFuture().get(5, SECONDS);
+
+		assertThat(response.getId(), is(location));
 	}
 
 	@Test
@@ -94,13 +104,24 @@ class WeatherServiceIT {
 	}
 
 	@Test
-	void weatherForecast_ValidLocation_RespondsWithWeatherData() throws Exception {
-	    final String location = "Nowhere, US";
+	void weatherForecast_ValidLocationName_RespondsWithWeatherData() throws Exception {
+	    final String location = "Helsinki, FI";
 
 	    final WeatherForecastResponse response = weatherService.weatherForecast(location).invoke()
 			    .toCompletableFuture().get(5, SECONDS);
 
 		assertThat(response.getLocation(), is(location));
+		assertThat(response.getForecast(), hasSize(40));
+	}
+
+	@Test
+	void weatherForecast_ValidLocationId_RespondsWithWeatherData() throws Exception {
+		final int location = 9823682;
+
+		final WeatherForecastResponse response = weatherService.weatherForecast(Integer.toString(location)).invoke()
+				.toCompletableFuture().get(5, SECONDS);
+
+		assertThat(response.getId(), is(location));
 		assertThat(response.getForecast(), hasSize(40));
 	}
 
